@@ -17,14 +17,14 @@
 ---
 
 <p align="center">
-  <img src="assets/how-it-works.svg" alt="Animation, drawn in terminal characters: a giant, still figure leans over the stage and sends threads to four marionettes. They jerk upright, take tasks from a pile and work. The reviewer fails one task and then passes it, and the lead merges the work one piece at a time." width="100%">
+  <img src="assets/how-it-works.svg" alt="Animation, drawn in terminal characters: a giant figure leans over the stage, starts four marionettes and fills a task list. They claim tasks, work independently and message each other. The reviewer fails one task and then passes it, the lead merges the work one piece at a time, and the teammates shut down." width="100%">
 </p>
 
 ## Why this exists
 
 Starting ten agents takes a minute. Knowing that what they built is right takes all your attention. Claude Code [agent teams](https://code.claude.com/docs/en/agent-teams) give you the machinery; this guide is what running them on a production codebase taught, including what went wrong.
 
-It is opinionated, and it marks what is measured and what is not. It is early: see [what has and has not been run](GUIDE.md#the-pile).
+It is opinionated, and it marks what is measured and what is not. The roles, the review and the merges in the animation are this guide's practice, not something agent teams do for you. It is early: see [what has and has not been run](GUIDE.md#the-pile).
 
 ## Quick start
 
@@ -39,7 +39,7 @@ It is opinionated, and it marks what is measured and what is not. It is early: s
 }
 ```
 
-You need both. The first turns teams on. The second gives you the shared task list on newer models, which leave it out by default. With only the first, you get something that looks like a team and works like subagents.
+The first turns teams on. The second is [one way](https://code.claude.com/docs/en/tools-reference#task-tool-availability) to get the shared task list on models newer than Opus 4.7, Sonnet 4.6 and Haiku 4.5, which leave it out by default. With only the first, teammates coordinate by message, with no shared list.
 
 **2. Point your sessions at the guide.** Clone this repo, and add this to `~/.claude/CLAUDE.md`:
 
