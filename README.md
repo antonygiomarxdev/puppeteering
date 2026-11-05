@@ -68,6 +68,7 @@ A project's own document holds only what is specific to it.
 | [`LESSONS.md`](LESSONS.md) | What failed in real runs, and what changed because of it |
 | [`REFERENCES.md`](REFERENCES.md) | The official Claude Code docs for each topic, and further reading |
 | [`setup/`](setup) | The settings to copy |
+| [`mods/puppet-monitor/`](mods/puppet-monitor) | A pane that shows who is working on what, and what has gone quiet |
 
 ## Contributing
 

@@ -1,0 +1,6 @@
+{
+  "name": "puppet-monitor",
+  "version": "0.1.0",
+  "description": "A puppet theatre pane: see the lead and each agent, its task, what it says and does, and who is stuck or looping.",
+  "types": "./types/index.d.ts"
+}
