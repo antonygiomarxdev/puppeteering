@@ -198,7 +198,7 @@ export const register: Register = on => {
           <Box flexDirection="row" flexWrap="wrap" gap={1}>
             <Text dimColor>open:</Text>
             {openable.map((agent, i) => (
-              <Button hotkey={String(i + 1)} onPress={() => void $.ui.view({ agentId: agent.id })}>
+              <Button key={agent.id} hotkey={String(i + 1)} onPress={() => void $.ui.view({ agentId: agent.id })}>
                 {i + 1} {agent.name.slice(0, 14)}
               </Button>
             ))}
