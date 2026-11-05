@@ -1,0 +1,6 @@
+{
+  "name": "puppet-monitor",
+  "version": "0.1.0",
+  "description": "A pane showing who is working on what, for how long, and which agents have gone quiet.",
+  "types": "./types/index.d.ts"
+}
