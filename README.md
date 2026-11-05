@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Puppeteering: a still figure in a violet aura holds four wooden marionettes on strings." width="100%">
+  <img src="assets/banner.svg" alt="Puppeteering: a giant figure with burning eyes, drawn in terminal characters, leans over a stage and holds four marionettes on strings." width="100%">
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 ---
 
 <p align="center">
-  <img src="assets/how-it-works.svg" alt="Animation: a still puppeteer sends threads to four wooden marionettes. They jerk upright, take tasks from a pile and work. A review fails and then passes, and the work merges one piece at a time." width="100%">
+  <img src="assets/how-it-works.svg" alt="Animation, drawn in terminal characters: a giant, still figure leans over the stage and sends threads to four marionettes. They jerk upright, take tasks from a pile and work. The reviewer fails one task and then passes it, and the lead merges the work one piece at a time." width="100%">
 </p>
 
 ## Why this exists
