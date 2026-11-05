@@ -35,7 +35,7 @@ The lead fills the shared task list; teammates take the next free task.
 - **Dependencies** go on the task, so a blocked one is not taken: a review waits for the push; a task that edits a file waits for the PR that also edits it.
 - **The lead writes what it alone can do as tasks too**, such as merges, so the owner sees the whole queue with Ctrl+T.
 
-*Not yet run: teammates claiming from the pile on their own. See [`LESSONS.md`](LESSONS.md).*
+*Run once, with one researcher given no task by name: it found, claimed and finished a task from the list. Not yet run: several teammates competing for tasks, or builders across worktrees.*
 
 ## Parallel by default
 

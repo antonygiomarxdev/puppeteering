@@ -8,7 +8,11 @@ The team ran for a day with zero tasks in its shared list. On Opus 5.5 the Task 
 
 Changed: `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` in the user settings. The tools loaded in the running session once the file was saved, through tool search, with no restart.
 
-Open: whether teammates already running get the tools, and whether self-claiming across worktrees works.
+A new teammate had the tools, and took a task from the list with no task named in its prompt.
+
+The lead's own tasks need an owner, or a teammate can claim them. Setting one sends the lead a notice per task.
+
+Open: whether teammates already running get the tools, and how several compete across worktrees.
 
 ## 2026-11-05: reusing teammates needs a rule that fits the pile
 
