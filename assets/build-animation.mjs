@@ -114,8 +114,8 @@ const within = (t, ...windows) => windows.some(([a, b]) => t >= a && t < b);
 
 const PUPPETS = [
   { role: 'BUILDER', x: 170 },
-  { role: 'BUILDER', x: 420 },
-  { role: 'REVIEWER', x: 780 },
+  { role: 'BUILDER', x: 400 },
+  { role: 'REVIEWER', x: 800 },
   { role: 'RESEARCHER', x: 1030 },
 ];
 // Each thread leaves a fingertip: the ring finger holds the outer puppet, the index the inner.
@@ -425,19 +425,22 @@ function buildAnimated() {
 
   const COL = PUPPETS.map((p) => Math.round(p.x / CW));
   const ROW = 21;
-  const PILE = [48, 15];
+  const LIST = 46; // The task list's first column, between the puppets.
+  const BUILDER = [COL[0] + 8, ROW];
+  const BUILDER_2 = [COL[1] + 8, ROW];
   const REVIEW = [COL[2] - 12, ROW];
+  const between = (from, to, a, b) => token('[msg]', [[a, ...from], [b, ...to]], (t) => t >= a && t < b);
   const tokens = [
-    token('[#1]', [
-      [5.4, ...PILE], [6.4, COL[0] + 8, ROW], [11.6, COL[0] + 8, ROW], [12, ...REVIEW], [FAIL + 0.3, ...REVIEW],
-      [FAIL + 0.8, COL[0] + 8, ROW], [15.8, COL[0] + 8, ROW], [16.1, ...REVIEW], [PASS_1 + 0.7, ...REVIEW], [17.4, 49, 30],
-    ], (t) => t >= 5.4 && t < 24),
-    token('[#2]', [
-      [5.7, ...PILE], [6.7, COL[1] + 8, ROW], [16.9, COL[1] + 8, ROW], [17.2, ...REVIEW], [PASS_2 + 0.4, ...REVIEW], [18.8, 56, 30],
-    ], (t) => t >= 5.7 && t < 24),
-    token('[#3]', [
-      [6, ...PILE], [7, COL[3] - 12, ROW], [10.2, COL[3] - 12, ROW], [10.8, 52, 7],
-    ], (t) => t >= 6 && t < 10.9),
+    token('[#1]', [[5.4, LIST, 14], [6.4, ...BUILDER], [16.9, ...BUILDER], [17.4, 49, 30]], (t) => t >= 5.4),
+    token('[#2]', [[5.7, LIST, 15], [6.7, ...BUILDER_2], [18.3, ...BUILDER_2], [18.8, 56, 30]], (t) => t >= 5.7),
+    token('[#3]', [[6, LIST, 16], [7, COL[3] - 12, ROW], [10.2, COL[3] - 12, ROW], [10.8, 52, 7]], (t) => t >= 6 && t < 10.9),
+    token('[#4]', [[11.9, LIST, 17], [12.2, ...REVIEW]], (t) => t >= 11.9 && t < PASS_1),
+    token('[#5]', [[17.2, LIST, 18], [17.5, ...REVIEW]], (t) => t >= 17.2 && t < PASS_2),
+    // Teammates message each other directly, not through the lead.
+    between(BUILDER, REVIEW, 11.2, 11.8),
+    between(REVIEW, BUILDER, FAIL + 0.3, FAIL + 0.8),
+    between(BUILDER, REVIEW, 15.4, 15.9),
+    between(BUILDER_2, REVIEW, 16.7, 17.2),
   ].join('');
 
   const verdicts =
@@ -445,17 +448,20 @@ function buildAnimated() {
     `<g style="${when((t) => within(t, [PASS_1, PASS_1 + 0.7]))}">${at(COL[2] + 8, 19, 'PASS #1', 'p')}</g>` +
     `<g style="${when((t) => within(t, [PASS_2, PASS_2 + 0.6]))}">${at(COL[2] + 8, 19, 'PASS #2', 'p')}</g>`;
 
+  // The states are the docs': pending, in progress, completed, and blocked by a dependency.
+  const STATE = { pending: 'm', blocked: 's', 'in progress': 't', completed: 'p' };
+  const task = (row, id, name, states) =>
+    statusRows(LIST, row, [
+      ['', 'm'],
+      ...states.map(([state, t]) => [`${id} ${name.padEnd(6)} ${state}`, STATE[state], t]),
+    ]);
   const pile =
-    at(48, 13, 'THE PILE', 'm') +
-    statusRows(48, 14, [
-      ['[ ] #1 free', 'm'], ['[~] #1 building', 't', 5.4], ['[?] #1 in review', 't', 11.6], ['[!] #1 failed', 'x', FAIL],
-      ['[?] #1 in review', 't', 15.8], ['[+] #1 passed', 'p', PASS_1], ['[x] #1 merged', 'p', 17.4],
-    ]) +
-    statusRows(48, 15, [
-      ['[ ] #2 free', 'm'], ['[~] #2 building', 't', 5.7], ['[?] #2 in review', 't', 16.9], ['[x] #2 merged', 'p', 18.8],
-    ]) +
-    statusRows(48, 16, [['[ ] #3 free', 'm'], ['[~] #3 research', 't', 6], ['[x] #3 reported', 'p', 10.2]]) +
-    statusRows(48, 18, [['free: 3', 'm'], ['free: 2', 'm', 5.4], ['free: 1', 'm', 5.7], ['free: 0', 'm', 6]]);
+    `<g style="${when((t) => t >= 4.2)}">${at(LIST, 13, 'TASK LIST (THE PILE)', 'm')}</g>` +
+    task(14, '#1', 'build', [['pending', 4.4], ['in progress', 5.4], ['completed', 11.6], ['in progress', FAIL + 0.8], ['completed', 15.8]]) +
+    task(15, '#2', 'build', [['pending', 4.6], ['in progress', 5.7], ['completed', 16.9]]) +
+    task(16, '#3', 'search', [['pending', 4.8], ['in progress', 6], ['completed', 10.2]]) +
+    task(17, '#4', 'review', [['blocked', 5], ['pending', 11.6], ['in progress', 11.9], ['blocked', FAIL + 0.8], ['in progress', 15.9], ['completed', PASS_1]]) +
+    task(18, '#5', 'review', [['blocked', 5.2], ['pending', 16.9], ['in progress', 17.2], ['completed', PASS_2]]);
 
   const leadLog = [
     ['lead: reads #3', 10.8, 12.4],
@@ -467,12 +473,12 @@ function buildAnimated() {
   const main = at(40, 30, 'main', 'm') + at(45, 30, '=========================', 'c');
 
   const captions = [
-    caption('the lead stays still. every teammate is on a string.', 2.7, 5.3),
-    caption('each one takes the next free task from the pile.', 5.4, 8.6),
-    caption('writing runs in parallel.', 8.7, 11.6),
-    caption('whoever wrote it does not review it.', 11.7, 16.9),
-    caption('the lead checks, and merges one at a time.', 17, 20.4),
-    caption('when the work is done, the strings come off.', 20.5, 24),
+    caption('the lead starts the team. each teammate has its own context.', 2.7, 5.3),
+    caption('teammates claim the next free task on their own.', 5.4, 8.6),
+    caption('they work independently, and message each other.', 8.7, 11.8),
+    caption('whoever wrote it does not review it.', 11.9, 16.9),
+    caption('in this guide, the lead checks and merges, one at a time.', 17, 20.4),
+    caption('when the work is done, teammates shut down.', 20.5, 24),
   ].join('');
 
   const shake = track(
@@ -491,7 +497,7 @@ ${bigWord(12, TOP, (s, i) => `<g style="${when((t) => t >= 0.2 + i * 0.09)}">${s
   const face = `<g style="${when((t) => t >= 2.6 && t < 22.2)}">${brows()}${Object.entries(LOOKS).map(([k, look]) => `<g style="${when((t) => gazeAt(t) === k)}">${eyes(look)}</g>`).join('')}</g>
 <g style="${when((t) => t >= FAIL && t < PASS_1)}">${grin()}</g>`;
 
-  const label = 'A puppet theatre drawn in terminal characters. A giant, still figure leans over the stage and sends threads to four marionettes, who jerk upright and take tasks from a pile. The reviewer fails one task and then passes it, and the lead merges the work one piece at a time.';
+  const label = 'A puppet theatre drawn in terminal characters. A giant figure leans over the stage, starts four marionettes and fills a task list. They claim tasks, work independently and message each other. The reviewer fails one task and then passes it, the lead merges the work one piece at a time, and the teammates shut down.';
   const css = `${CSS}${keyframes.join('')}@media (prefers-reduced-motion:reduce){*{animation:none!important}}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${label}">
 <style>${css}</style>
