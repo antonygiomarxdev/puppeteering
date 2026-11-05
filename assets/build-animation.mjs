@@ -1,5 +1,5 @@
 // Writes assets/how-it-works.svg (animated) and assets/banner.svg (still).
-// Original artwork: a manga-styled puppeteer and wooden marionettes, CSS only.
+// Original artwork: a puppet theatre drawn in terminal characters, CSS only.
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,383 +8,527 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const LOOP = 24;
 const W = 1200;
 const H = 675;
-const JERK = 'cubic-bezier(.2,1.7,.4,1)';
-const SNAP = 'steps(1)';
+const COLS = 110;
+const CW = W / COLS;
+const TOP = 28;
+const CH = (H - TOP) / 32;
+const HERO = 13.5; // The moment a viewer with reduced motion sees as a still.
+
+const BG = '#0e0b08';
+const AMBER = '#ffb000';
+const THREAD = '#fff1d0';
+const RED = '#ff4d5e';
+const GREEN = '#6bf0a0';
+const RAMP = ' .:-=+*#%@';
+
+const FONT = `ui-monospace,SFMono-Regular,Menlo,Consolas,'DejaVu Sans Mono','Liberation Mono',monospace`;
+const CSS = `
+text{font:700 18px ${FONT};white-space:pre}
+.c{fill:#7a4522}.l{fill:${AMBER}}.ld{fill:#6e4a10}.sh{fill:#33230f}.e{fill:#ff2a1a}.g{fill:#e6d3a8}.t{fill:${THREAD}}.w{fill:#e6d3a8}.s{fill:#a58d62}
+.x{fill:${RED}}.p{fill:${GREEN}}.m{fill:#c2a878}.big{fill:${AMBER}}.bar{font-size:14px;fill:#c2a878}
+`;
+
+function seg(px, py, a, b, c, d) {
+  const dx = c - a;
+  const dy = d - b;
+  const t = Math.max(0, Math.min(1, ((px - a) * dx + (py - b) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(px - a - dx * t, py - b - dy * t);
+}
+
+function lineChar(a, b, c, d) {
+  const slope = (d - b) / (c - a || 1e-6);
+  if (Math.abs(slope) > 2.6) return '|';
+  if (Math.abs(slope) < 0.28) return '-';
+  return slope > 0 ? '\\' : '/';
+}
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/ /g, ' ');
+
+// Each run sets its own width, so columns stay aligned in whatever monospace font the viewer has.
+function text(col, y, str, cls = '') {
+  const c = cls ? ` class="${cls}"` : '';
+  return `<text x="${+(col * CW).toFixed(1)}" y="${+y.toFixed(1)}" textLength="${+(str.length * CW).toFixed(1)}"${c}>${esc(str)}</text>`;
+}
+const rowY = (row, top = TOP) => top + row * CH + CH - 5;
+const at = (col, row, str, cls) => text(col, rowY(row), str, cls);
+
+// Draws scene(x, y) -> [char, class] | null onto the character grid.
+function raster(scene, rows = 32, top = TOP) {
+  let out = '';
+  for (let r = 0; r < rows; r++) {
+    let run = '';
+    let start = 0;
+    let cls = null;
+    let gap = 0;
+    const flush = () => {
+      if (run.trim()) out += text(start, rowY(r, top), run.trimEnd(), cls);
+      run = '';
+      gap = 0;
+      cls = null;
+    };
+    for (let c = 0; c < COLS; c++) {
+      const cell = scene((c + 0.5) * CW, top + (r + 0.5) * CH);
+      if (cell && cell[0] !== ' ') {
+        if (run && cls !== cell[1]) flush();
+        if (!run) {
+          start = c;
+          cls = cell[1];
+        }
+        run += ' '.repeat(gap) + cell[0];
+        gap = 0;
+      } else if (run && ++gap > 2) flush();
+    }
+    flush();
+  }
+  return out;
+}
 
 const keyframes = [];
 let counter = 0;
 
-// stops: [seconds, css, optional easing]. The first and last stops pad to 0% and 100%.
-function anim(stops) {
+// fn(t) is sampled over the loop and held between changes. The inline value is the HERO state,
+// so with animation off every element shows one coherent frame.
+function track(fn, css) {
+  const stops = [];
+  let last;
+  for (let i = 0; i <= LOOP * 20; i++) {
+    const t = i / 20;
+    const v = JSON.stringify(fn(t));
+    if (v !== last) stops.push([t, css(fn(t))]);
+    last = v;
+  }
+  if (stops.length === 1) return stops[0][1];
   const name = `a${counter++}`;
-  const padded = [...stops];
-  if (padded[0][0] !== 0) padded.unshift([0, padded[0][1]]);
-  if (padded.at(-1)[0] !== LOOP) padded.push([LOOP, padded.at(-1)[1]]);
-  const body = padded
-    .map(([t, css, ease]) => {
-      const pct = +((t / LOOP) * 100).toFixed(2);
-      return `${pct}%{${css}${ease ? `;animation-timing-function:${ease}` : ''}}`;
-    })
+  const body = [...stops, [LOOP, stops.at(-1)[1]]]
+    .map(([t, c]) => `${+((t / LOOP) * 100).toFixed(2)}%{${c}}`)
     .join('');
   keyframes.push(`@keyframes ${name}{${body}}`);
-  return `animation:${name} ${LOOP}s linear infinite`;
+  return `${css(fn(HERO))};animation:${name} ${LOOP}s step-end infinite`;
 }
 
-function fadeWindow(from, to, fade = 0.25) {
-  return anim([
-    [0, 'opacity:0'],
-    [from, 'opacity:0'],
-    [from + fade, 'opacity:1'],
-    [to, 'opacity:1'],
-    [to + fade, 'opacity:0'],
-  ]);
-}
+const opacity = (on) => `opacity:${on ? 1 : 0}`;
+const when = (fn) => track(fn, opacity);
+const within = (t, ...windows) => windows.some(([a, b]) => t >= a && t < b);
+
+/* ---------- Timeline ---------- */
 
 const PUPPETS = [
-  { name: 'BUILDER', x: 170, hand: [462, 152], attach: 4.2 },
-  { name: 'BUILDER', x: 440, hand: [462, 152], attach: 4.5 },
-  { name: 'REVIEWER', x: 760, hand: [738, 152], attach: 4.8 },
-  { name: 'RESEARCHER', x: 1030, hand: [738, 152], attach: 5.1 },
+  { role: 'BUILDER', x: 170 },
+  { role: 'BUILDER', x: 420 },
+  { role: 'REVIEWER', x: 780 },
+  { role: 'RESEARCHER', x: 1030 },
 ];
-const SLUMP_END = 21.2;
+// Each thread leaves a fingertip: the ring finger holds the outer puppet, the index the inner.
+const TIPS = [[240, 262], [340, 266], [860, 266], [960, 262]];
+const BAR = 322;
+const ARRIVE = [3.1, 3.4, 3.7, 4.0];
+const SLUMP = [20.5, 20.9, 21.3, 21.7];
 const FAIL = 13.2;
-const PASS = 16.2;
-
-function thread(p, i) {
-  const [hx, hy] = p.hand;
-  const midY = 215 + Math.abs(p.x - hx) * 0.1;
-  const d = `M${hx} ${hy}C${(hx + p.x) / 2} ${midY} ${p.x} ${midY + 20} ${p.x} 300`;
-  const draw = anim([
-    [0, 'stroke-dashoffset:1;opacity:0'],
-    [p.attach, 'stroke-dashoffset:1;opacity:1', 'ease-out'],
-    [p.attach + 0.3, 'stroke-dashoffset:0;opacity:1'],
-    [SLUMP_END, 'stroke-dashoffset:0;opacity:1'],
-    [SLUMP_END + 0.5, 'stroke-dashoffset:0;opacity:0'],
-  ]);
-  const color =
-    i === 0
-      ? anim([
-          [0, 'stroke:#f6ddff'],
-          [FAIL, 'stroke:#f6ddff', SNAP],
-          [FAIL + 0.01, 'stroke:#ff3b4f'],
-          [PASS, 'stroke:#ff3b4f', SNAP],
-          [PASS + 0.01, 'stroke:#58f5a6'],
-          [SLUMP_END, 'stroke:#58f5a6'],
-        ])
-      : i === 1
-        ? anim([
-            [0, 'stroke:#f6ddff'],
-            [PASS, 'stroke:#f6ddff', SNAP],
-            [PASS + 0.01, 'stroke:#58f5a6'],
-            [SLUMP_END, 'stroke:#58f5a6'],
-          ])
-        : 'stroke:#f6ddff';
-  return `<g style="${color}"><g opacity=".3"><path class="glow" pathLength="1" d="${d}" style="${draw}"/></g><path class="line" pathLength="1" d="${d}" style="${draw}"/></g>`;
-}
-
-function limb(d) {
-  return `<path class="limb" d="${d}"/><path class="limbwood" d="${d}"/>`;
-}
-
-function arm(side, moves) {
-  const x = side * 25;
-  const style = moves ? ` style="transform-origin:${x}px 114px;${moves}"` : '';
-  return `<g${style}>${limb(`M${x} 114L${x + side * 15} 148L${x + side * 6} 182`)}<circle class="joint" cx="${x}" cy="114" r="5"/><circle class="joint" cx="${x + side * 15}" cy="148" r="4"/></g>`;
-}
-
-function hammer(from, to, step = 0.42) {
-  const stops = [
-    [0, 'transform:rotate(0)'],
-    [from - 0.01, 'transform:rotate(0)', SNAP],
-  ];
-  let up = true;
-  for (let t = from; t < to; t += step) {
-    stops.push([t, `transform:rotate(${up ? -72 : -12}deg)`, SNAP]);
-    up = !up;
-  }
-  stops.push([to, 'transform:rotate(0)', SNAP]);
-  return stops;
-}
-
-function puppet(p, i) {
-  const rise = p.attach + 0.9;
-  const body = anim([
-    [0, 'transform:translateY(96px) rotate(19deg)'],
-    [rise, 'transform:translateY(96px) rotate(19deg)', JERK],
-    [rise + 0.35, 'transform:translateY(0) rotate(0)'],
-    [FAIL, 'transform:translateY(0) rotate(0)', SNAP],
-    ...(i === 0
-      ? [
-          [FAIL + 0.02, 'transform:translateY(0) rotate(-9deg)', SNAP],
-          [FAIL + 0.22, 'transform:translateY(0) rotate(7deg)', SNAP],
-          [FAIL + 0.42, 'transform:translateY(0) rotate(0)'],
-        ]
-      : []),
-    [SLUMP_END, 'transform:translateY(0) rotate(0)', 'ease-in'],
-    [SLUMP_END + 0.6, 'transform:translateY(96px) rotate(19deg)'],
-  ]);
-  const strings = anim([
-    [0, 'transform:scaleY(2.4);opacity:0'],
-    [p.attach + 0.3, 'transform:scaleY(2.4);opacity:0'],
-    [p.attach + 0.45, 'transform:scaleY(2.4);opacity:1'],
-    [rise, 'transform:scaleY(2.4);opacity:1', JERK],
-    [rise + 0.35, 'transform:scaleY(1);opacity:1'],
-    [SLUMP_END, 'transform:scaleY(1);opacity:1'],
-    [SLUMP_END + 0.5, 'transform:scaleY(1);opacity:0'],
-  ]);
-  const bar = fadeWindow(p.attach + 0.25, SLUMP_END, 0.15);
-  const head = anim([
-    [0, 'transform:rotate(26deg)'],
-    [rise, 'transform:rotate(26deg)', JERK],
-    [rise + 0.5, 'transform:rotate(0)'],
-    [SLUMP_END, 'transform:rotate(0)'],
-    [SLUMP_END + 0.5, 'transform:rotate(26deg)'],
-  ]);
-  const working = { 0: [[9.4, 12.6], [14.2, 16]], 1: [[9.6, 12.8]], 2: [[12.6, 13.2], [15.6, 16.2]], 3: [[9.2, 11]] }[i];
-  const stops = working.flatMap(([a, b], n) => (n === 0 ? hammer(a, b) : hammer(a, b).slice(2)));
-  const right = anim(stops);
-  return `<g transform="translate(${p.x} 300)">
-<g style="${bar}"><path class="bar" d="M-34 0H34"/><circle class="joint" r="4"/></g>
-<g style="transform-origin:0 0;${strings}"><path class="string" d="M-25 0V114M25 0V114M0 0V62"/></g>
-<g style="transform-origin:0 200px;${body}">
-<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
-${limb('M-11 172L-16 208L-12 246M11 172L16 208L12 246')}
-<circle class="joint" cx="-16" cy="208" r="4"/><circle class="joint" cx="16" cy="208" r="4"/>
-${arm(-1, '')}${arm(1, right)}
-<g style="transform-origin:0 104px;${head}">
-<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/>
-<circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/>
-</g></g>
-<text class="tag" y="282">${p.name}</text></g>`;
-}
-
-const PILE = [905, 58];
-
-function card(label, startAt, puppetIndex, thenTo) {
-  const hold = [PUPPETS[puppetIndex].x + 42, 425];
-  const stops = [
-    [0, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
-    [startAt, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`, 'cubic-bezier(.5,0,.2,1)'],
-    [startAt + 0.7, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`],
-    ...thenTo(hold),
-  ];
-  return `<g style="${anim(stops)}"><rect class="card" width="84" height="48" rx="3"/><text class="cardtext" x="42" y="31">${label}</text></g>`;
-}
-
-const merge = (at, slotX) => (hold) => [
-  [at, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`, 'ease-in'],
-  [at + 0.55, `transform:translate(${slotX}px,606px);opacity:1`],
-  [22.4, `transform:translate(${slotX}px,606px);opacity:1`],
-  [22.8, `transform:translate(${slotX}px,606px);opacity:0`],
-  [23.9, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:0`],
-  [24, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
+const PASS_1 = 16.3;
+const PASS_2 = 17.8;
+const WORK = [
+  [[6.8, 11.6], [14.2, 15.8]],
+  [[7.0, 16.9]],
+  [[11.9, 13.2], [15.9, PASS_1], [17.2, PASS_2]],
+  [[7.2, 10.2]],
 ];
 
-const toLead = (hold) => [
-  [11.1, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`, 'ease-in'],
-  [11.8, 'transform:translate(558px,110px);opacity:0'],
-  [23.9, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:0`],
-  [24, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
+function poseAt(i, t) {
+  if (t < ARRIVE[i] || t >= SLUMP[i]) return 'slump';
+  if (t < ARRIVE[i] + 0.25) return Math.floor((t - ARRIVE[i]) / 0.1) % 2 ? 'jerkR' : 'jerkL';
+  if (i === 0 && within(t, [FAIL, FAIL + 0.5])) return Math.floor((t - FAIL) / 0.1) % 2 ? 'jerkR' : 'jerkL';
+  if (within(t, ...WORK[i])) return Math.floor(t / 0.25) % 2 ? 'workA' : 'workB';
+  return 'up';
+}
+
+// Where the lead looks. It does not move; only its eyes do.
+function gazeAt(t) {
+  if (within(t, [9, 9.15], [19.6, 19.75])) return 'blink';
+  if (within(t, [FAIL, FAIL + 1])) return 'flare';
+  if (within(t, [FAIL + 1, PASS_1])) return 'left';
+  if (within(t, [10.2, FAIL], [PASS_1, 17.4])) return 'right';
+  return 'center';
+}
+const LOOKS = { center: ' @ ', left: '@  ', right: '  @', flare: '@@@', blink: '---' };
+
+/* ---------- Figures ---------- */
+
+function lean(deg, [x, y]) {
+  const r = (deg * Math.PI) / 180;
+  const py = y - 250;
+  return [x * Math.cos(r) - py * Math.sin(r), x * Math.sin(r) + py * Math.cos(r) + 250];
+}
+
+function skeleton(armR, deg = 0) {
+  const p = (x, y) => lean(deg, [x, y]);
+  const cap = (a, b, c, d, w) => [...p(a, b), ...p(c, d), w];
+  const lastR = armR.at(-1);
+  return {
+    head: [...p(0, 38), 31],
+    parts: [
+      cap(-24, 84, 24, 84, 6), cap(0, 92, 0, 134, 20),
+      cap(-24, 74, -56, 114, 9), cap(-56, 114, -44, 160, 8),
+      ...armR.map(([a, b, c, d]) => cap(a, b, c, d, 8.5)),
+      cap(-14, 143, -20, 198, 10), cap(-20, 198, -16, 250, 8.5),
+      cap(14, 143, 20, 198, 10), cap(20, 198, 16, 250, 8.5),
+    ],
+    strings: [
+      [0, 8, ...p(0, 22)],
+      [-44, 8, ...p(-44, 160)],
+      [44, 8, ...p(lastR[2], lastR[3])],
+    ],
+    bar: true,
+  };
+}
+
+const ARM_DOWN = [[24, 74, 56, 114], [56, 114, 44, 160]];
+const POSES = {
+  up: skeleton(ARM_DOWN),
+  jerkL: skeleton(ARM_DOWN, -10),
+  jerkR: skeleton(ARM_DOWN, 9),
+  workA: skeleton([[24, 74, 60, 62], [60, 62, 70, 20]]),
+  workB: skeleton([[24, 74, 62, 96], [62, 96, 80, 124]]),
+  slump: {
+    head: [28, 174, 24],
+    parts: [
+      [-4, 186, -8, 236, 22],
+      [-24, 196, -54, 222, 8], [-54, 222, -48, 250, 8],
+      [14, 200, 40, 230, 8], [40, 230, 46, 250, 8],
+      [-8, 246, 46, 250, 9], [-8, 246, -60, 250, 9],
+    ],
+    strings: [],
+    bar: false,
+  },
+};
+
+function figure(pose, px, bar) {
+  return (x, y) => {
+    const u = x - px;
+    const v = y - bar;
+    const [hx, hy, hr] = pose.head;
+    const eye = Math.abs(v - hy) < 9 && Math.abs(Math.abs(u - hx) - 14) < 6;
+    const head = Math.hypot(u - hx, (v - hy) * 0.95) - hr;
+    const body = Math.min(...pose.parts.map(([a, b, c, d, w]) => seg(u, v, a, b, c, d) - w));
+    const dist = Math.min(head, body);
+    if (dist < 0) {
+      if (head < 0 && eye) return ['o', 't'];
+      return [dist > -9 ? '#' : '+', 'w'];
+    }
+    if (pose.bar && Math.abs(v) < 8 && Math.abs(u) < 60) return ['=', 'w'];
+    for (const [a, b, c, d] of pose.strings) if (seg(u, v, a, b, c, d) < 4.5) return [lineChar(a, b, c, d), 's'];
+    return null;
+  };
+}
+
+// One hand, described on the left and mirrored to the right: [x, y, x, y, half-width].
+const SLEEVE = [285, -30, 285, 22, 66];
+const PALM = [285, 72, 285, 108, 62];
+const FINGERS = [
+  [[233, 110, 207, 165, 12], [207, 165, 198, 208, 10]], // little
+  [[262, 122, 247, 190, 13], [247, 190, 240, 246, 11]], // ring
+  [[293, 126, 290, 200, 13.5], [290, 200, 288, 266, 11]], // middle
+  [[325, 120, 335, 190, 13], [335, 190, 340, 250, 11]], // index
+  [[345, 84, 390, 125, 15], [390, 125, 410, 172, 12]], // thumb
 ];
 
-function stamp(text, cls, x, y, at, until) {
-  const style = anim([
-    [0, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(2.4)`],
-    [at, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(2.4)`, 'cubic-bezier(.2,1.5,.5,1)'],
-    [at + 0.16, `opacity:1;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
-    [until, `opacity:1;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
-    [until + 0.2, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
-  ]);
-  return `<text class="stamp ${cls}" style="${style}">${text}</text>`;
-}
+const ARM = [[480, 238, 440, 130, 27], [440, 130, 395, 55, 24], [395, 55, 300, 25, 22]];
 
-function caption(text, from, to) {
-  const width = text.length * 11.6 + 36;
-  return `<g style="${fadeWindow(from, to, 0.15)}"><rect class="capbox" x="28" y="28" width="${width}" height="44"/><text class="captext" x="46" y="57">${text}</text></g>`;
-}
-
-function speedLines(style) {
-  const lines = [];
-  for (let i = 0; i < 44; i++) {
-    const a = (i / 44) * Math.PI * 2 + (i % 3) * 0.02;
-    const inner = 150 + ((i * 37) % 90);
-    const outer = 1300;
-    const wedge = 0.004 + ((i * 13) % 7) * 0.0012;
-    const px = (r, t) => `${(600 + Math.cos(t) * r).toFixed(0)} ${(120 + Math.sin(t) * r).toFixed(0)}`;
-    lines.push(`M${px(inner, a)}L${px(outer, a - wedge)}L${px(outer, a + wedge)}Z`);
+// The lead is one body, drawn like the puppets but far larger: skin in bone, clothes in amber.
+function giantScene(x, y) {
+  const u = x < W / 2 ? x : W - x;
+  const cap = ([a, b, c, d, w]) => seg(u, y, a, b, c, d) - w;
+  for (const [near, far] of FINGERS) {
+    const joint = Math.hypot(u - near[2], y - near[3]) < 12;
+    if (Math.min(cap(near), cap(far)) < 0) return [joint ? '=' : '#', 'w'];
   }
-  return `<path class="speed" d="${lines.join('')}" style="${style}"/>`;
+  const palm = cap(PALM);
+  if (palm < 0) return [palm > -13 ? '#' : y > 92 && y < 118 ? '~' : '+', 'w'];
+  const cuff = cap(SLEEVE);
+  if (cuff < 0 && y > 26) return ['=', 'l'];
+
+  const off = Math.abs(x - W / 2);
+  const skull = Math.hypot(off, (y - 118) * 0.95) - 74;
+  if (skull < 0) {
+    if (y > 108 && y < 150 && off > 5 && off < 53) return null; // Eye sockets.
+    if (y > 168 && y < 190 && off < 46) return null; // Mouth.
+    if (y >= 190 && Math.abs(off - 40) < 6) return ['|', 's']; // The jaw is hinged, like a puppet's.
+    return [skull > -10 ? '#' : '+', 'w'];
+  }
+  const neck = seg(x, y, W / 2, 192, W / 2, 226) - 19;
+  if (neck < 0) return [neck > -8 ? '#' : '+', 'w'];
+
+  const clothes = Math.min(
+    Math.min(cuff, ...ARM.map(cap)),
+    Math.min(seg(u, y, 480, 238, 562, 216) - 24, y < 258 ? seg(u, y, 520, 244, 600, 244) - 18 : Infinity),
+  );
+  if (clothes < 0) return [clothes > -12 ? '%' : ':', clothes > -12 ? 'l' : 'ld'];
+  return null;
 }
 
-const FLICKER_A = 'transform-origin:600px 230px;animation:flick 1.3s ease-in-out infinite alternate';
-const FLICKER_B = 'transform-origin:600px 230px;animation:flick 1.9s ease-in-out infinite alternate-reverse';
+const FACE = { brow: 4, eye: 5, grin: 7, left: 51, right: 56 };
+const faceAt = (row, top) => (col, str, cls) => text(col, rowY(top ? row : row + 1, top), str, cls);
 
-const AURA = `<g filter="url(#ragged)">
-<path class="aura1" style="${FLICKER_A}" d="M600 -30C520 20 560 60 490 70C430 90 400 170 440 240C510 290 690 290 760 240C800 170 770 90 710 70C640 60 680 20 600 -30Z"/>
-<path class="aura2" style="${FLICKER_B}" d="M600 -5C540 40 570 70 525 85C480 105 465 175 490 225C540 265 660 265 710 225C735 175 720 105 675 85C630 70 660 40 600 -5Z"/>
-</g>`;
-
-const LEAD = `<path class="robe" d="M600 34C566 34 548 66 552 104C520 112 492 128 462 146L470 160C505 150 530 146 548 150C540 185 520 215 505 232L560 222L582 240L604 224L628 242L646 222L695 232C680 215 660 185 652 150C670 146 695 150 730 160L738 146C708 128 680 112 648 104C652 66 634 34 600 34Z"/>
-<ellipse class="void" cx="600" cy="84" rx="27" ry="32"/>
-<path class="finger" d="M462 152L448 140M462 152L444 148M462 152L444 156M462 152L448 165M738 152L752 140M738 152L756 148M738 152L756 156M738 152L752 165"/>`;
-
-const DEFS = `<defs>
-<radialGradient id="sky" cx="50%" cy="18%" r="85%"><stop offset="0" stop-color="#3a1466"/><stop offset=".42" stop-color="#150726"/><stop offset="1" stop-color="#05020a"/></radialGradient>
-<pattern id="tone" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="4.5" cy="4.5" r="1.5" fill="#c9a2ff"/></pattern>
-<radialGradient id="toneFade" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-<mask id="toneMask"><rect width="${W}" height="${H}" fill="url(#toneFade)"/></mask>
-<filter id="ragged" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".022 .05" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="46"/><feGaussianBlur stdDeviation="1.6"/></filter>
-<filter id="eyeGlow" x="-100%" y="-300%" width="300%" height="700%"><feGaussianBlur stdDeviation="5"/></filter>
-</defs>`;
-
-const BASE_CSS = `
-.aura1{fill:#a53dff;opacity:.5}.aura2{fill:#ff4fd8;opacity:.38}
-.robe{fill:#07030d;stroke:#d9a8ff;stroke-width:2.5;stroke-linejoin:round}
-.void{fill:#000}
-.finger{stroke:#d9a8ff;stroke-width:3;stroke-linecap:round;fill:none}
-.eye{fill:#ff8bf0}.eyeglow{fill:#ff4fd8}
-.glow,.line,.string,.bar{fill:none;stroke-linecap:round}
-.glow{stroke-width:8;stroke-dasharray:1}
-.line{stroke-width:1.8;stroke-dasharray:1}
-.glow,.line{stroke:inherit}
-.string{stroke:#f6ddff;stroke-width:1.3}
-.bar{stroke:#d9c6a2;stroke-width:6}
-.wood{fill:#d8c39b;stroke:#120a18;stroke-width:3;stroke-linejoin:round}
-.limb{fill:none;stroke:#120a18;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
-.limbwood{fill:none;stroke:#d8c39b;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
-.joint{fill:#6d3fb0;stroke:#120a18;stroke-width:2}
-.seam{stroke:#8d7650;stroke-width:1.5;fill:none}
-.hollow{fill:#120a18}
-text{font-family:Impact,'Arial Black','Helvetica Neue',Arial,sans-serif}
-.tag{fill:#e8d8ff;font-size:17px;letter-spacing:3px;text-anchor:middle}
-.card{fill:#f4ecd9;stroke:#120a18;stroke-width:3}
-.cardtext{fill:#120a18;font-size:22px;text-anchor:middle}
-.slot{fill:#0c0614;stroke:#d9a8ff;stroke-width:2.5}
-.slottext{fill:#d9a8ff;font-size:18px;letter-spacing:5px;text-anchor:middle}
-.pilelabel{fill:#e8d8ff;font-size:15px;letter-spacing:3px;text-anchor:middle}
-.tone{fill:url(#tone)}
-.speed{fill:#f6e8ff}
-`;
-
-function stage(extraInStage = '', behind = '') {
-  return `<rect x="-40" y="-40" width="${W + 80}" height="${H + 80}" fill="url(#sky)"/>
-<rect class="tone" width="${W}" height="${H}" mask="url(#toneMask)"/>
-${behind}${AURA}${LEAD}${extraInStage}`;
+function eyes(look, top = TOP) {
+  const eye = faceAt(FACE.eye, top);
+  return eye(FACE.left, look, 'e') + eye(FACE.right, look, 'e');
 }
+function brows(top = TOP) {
+  const brow = faceAt(FACE.brow, top);
+  return brow(FACE.left, '\\\\\\', 'e') + brow(FACE.right, '///', 'e');
+}
+const grin = (top = TOP) => faceAt(FACE.grin, top)(FACE.left, 'vVvVvVvV', 'g');
+
+function curtainScene(x, y) {
+  const near = x < 600 ? x : W - x;
+  if (y > TOP + 30 * CH) return null;
+  if (near > 46 - 18 * Math.sin(y / 120)) return null;
+  return [RAMP[1 + Math.floor(Math.abs(Math.sin(near / 13)) * 3.4)], 'c'];
+}
+
+// The thread from a hand to a puppet's bar, cut in chunks so it can draw and retract.
+function threadChunks(hand, px, bar, chunks = 8, rows = 32, top = TOP) {
+  const [a, b] = hand;
+  const dx = px - a;
+  const dy = bar - b;
+  const len2 = dx * dx + dy * dy;
+  const blocks = [];
+  for (let k = 0; k < chunks; k++) {
+    blocks.push(
+      raster((x, y) => {
+        const t = ((x - a) * dx + (y - b) * dy) / len2;
+        if (t < 0 || t > 1) return null;
+        const shallow = Math.abs(dy) < Math.abs(dx);
+        const miss = shallow ? Math.abs(y - (b + (dy * (x - a)) / dx)) > CH / 2 : Math.abs(x - (a + (dx * (y - b)) / dy)) > CW / 2;
+        if (miss) return null;
+        return t >= k / chunks && (t < (k + 1) / chunks || k === chunks - 1) ? [lineChar(a, b, px, bar), ''] : null;
+      }, rows, top),
+    );
+  }
+  return blocks;
+}
+
+/* ---------- The title, in a letterform of our own ---------- */
+
+const LETTERS = {
+  P: ['####.', '#...#', '####.', '#....', '#....'],
+  U: ['#...#', '#...#', '#...#', '#...#', '.###.'],
+  E: ['#####', '#....', '####.', '#....', '#####'],
+  T: ['#####', '..#..', '..#..', '..#..', '..#..'],
+  R: ['####.', '#...#', '####.', '#..#.', '#...#'],
+  I: ['###', '.#.', '.#.', '.#.', '###'],
+  N: ['#...#', '##..#', '#.#.#', '#..##', '#...#'],
+  G: ['.####', '#....', '#..##', '#...#', '.###.'],
+};
+const WORD = 'PUPPETEERING';
+const wordWidth = [...WORD].reduce((n, l) => n + LETTERS[l][0].length + 1, -1);
+
+function bigLetter(letter, col, row, top = TOP) {
+  return LETTERS[letter]
+    .map((line, i) => (line.includes('#') ? text(col, rowY(row + i, top), line.replace(/\./g, ' '), 'big') : ''))
+    .join('');
+}
+
+function bigWord(row, top = TOP, wrap = (s) => s) {
+  let col = Math.round((COLS - wordWidth) / 2);
+  return [...WORD]
+    .map((letter, i) => {
+      const s = wrap(bigLetter(letter, col, row, top), i);
+      col += LETTERS[letter][0].length + 1;
+      return s;
+    })
+    .join('');
+}
+
+/* ---------- Moving pieces ---------- */
+
+function pathAt(path, t) {
+  if (t <= path[0][0]) return path[0].slice(1);
+  for (let i = 1; i < path.length; i++) {
+    const [t0, c0, r0] = path[i - 1];
+    const [t1, c1, r1] = path[i];
+    if (t < t1) {
+      const k = Math.max(0, (t - t0) / (t1 - t0));
+      return [Math.round(c0 + (c1 - c0) * k), Math.round(r0 + (r1 - r0) * k)];
+    }
+  }
+  return path.at(-1).slice(1);
+}
+
+function token(label, path, visible) {
+  const move = track(
+    (t) => pathAt(path, t),
+    ([c, r]) => `transform:translate(${+(c * CW).toFixed(1)}px,${+((r - 3) * CH).toFixed(1)}px)`,
+  );
+  const width = label.length * CW;
+  return `<g style="${when(visible)}"><g style="${move}"><rect x="-3" y="${TOP + 3 * CH + 1}" width="${width + 6}" height="${CH - 2}" fill="${BG}"/>${at(0, 3, label, 'w')}</g></g>`;
+}
+
+function statusRows(col, row, states) {
+  return states
+    .map(([label, cls], i) => {
+      const from = i === 0 ? 0 : states[i][2];
+      const to = i + 1 < states.length ? states[i + 1][2] : LOOP + 1;
+      return `<g style="${when((t) => t >= from && t < to)}">${at(col, row, label, cls)}</g>`;
+    })
+    .join('');
+}
+
+function caption(str, from, to) {
+  const line = `$ ${str}`;
+  const typed = track(
+    (t) => Math.min(line.length, Math.max(0, Math.round((t - from) * 34))),
+    (n) => `transform:translateX(${+(n * CW).toFixed(1)}px)`,
+  );
+  const cursor = track(
+    (t) => Math.min(line.length, Math.max(0, Math.round((t - from) * 34))),
+    (n) => `transform:translateX(${+((n + 2) * CW).toFixed(1)}px)`,
+  );
+  return `<g style="${when((t) => t >= from && t < to)}">${at(2, 31, line, 't')}<rect x="${2 * CW}" y="${TOP + 31 * CH}" width="${(line.length + 1) * CW}" height="${CH}" fill="${BG}" style="${typed}"/><rect y="${TOP + 31 * CH + 3}" width="${CW - 1}" height="${CH - 6}" fill="${AMBER}" style="${cursor}"/></g>`;
+}
+
+/* ---------- Build ---------- */
 
 function buildAnimated() {
-  const eyes = anim([
-    [0, 'opacity:0'],
-    [3.3, 'opacity:0', SNAP],
-    [3.35, 'opacity:1'],
-    [22.3, 'opacity:1', SNAP],
-    [22.4, 'opacity:0'],
-  ]);
-  const shake = anim([
-    [0, 'transform:translate(0,0)'],
-    [3.3, 'transform:translate(0,0)', SNAP],
-    [3.34, 'transform:translate(9px,-7px)', SNAP],
-    [3.42, 'transform:translate(-8px,6px)', SNAP],
-    [3.5, 'transform:translate(0,0)'],
-    [FAIL, 'transform:translate(0,0)', SNAP],
-    [FAIL + 0.04, 'transform:translate(-11px,6px)', SNAP],
-    [FAIL + 0.12, 'transform:translate(10px,-6px)', SNAP],
-    [FAIL + 0.2, 'transform:translate(-6px,3px)', SNAP],
-    [FAIL + 0.28, 'transform:translate(0,0)'],
-  ]);
-  const flashLines = anim([
-    [0, 'opacity:0'],
-    [3.3, 'opacity:0', SNAP],
-    [3.32, 'opacity:.75'],
-    [3.95, 'opacity:0'],
-    [FAIL, 'opacity:0', SNAP],
-    [FAIL + 0.02, 'opacity:.45'],
-    [FAIL + 0.5, 'opacity:0'],
-  ]);
-  const titleCard = anim([
-    [0, 'opacity:1'],
-    [3.2, 'opacity:1', SNAP],
-    [3.3, 'opacity:0'],
-    [23.6, 'opacity:0'],
-    [24, 'opacity:1'],
-  ]);
-  const titleWord = anim([
-    [0, 'transform:scale(1.12);opacity:0'],
-    [0.3, 'transform:scale(1.12);opacity:0', 'cubic-bezier(.1,.8,.3,1)'],
-    [0.75, 'transform:scale(1);opacity:1'],
-    [3.3, 'transform:scale(.99);opacity:1'],
-  ]);
-  const titleSub = fadeWindow(1, 3.1, 0.3);
-  const endCard = anim([
-    [0, 'opacity:0'],
-    [22.3, 'opacity:0'],
-    [22.7, 'opacity:1'],
-    [23.6, 'opacity:1'],
-    [24, 'opacity:1'],
-  ]);
-  const css = `${BASE_CSS}
-@keyframes flick{from{transform:scale(1,.97)}to{transform:scale(1.05,1.08)}}
-.stamp{font-size:64px;font-weight:900;text-anchor:middle;stroke:#120a18;stroke-width:3;paint-order:stroke}
-.fail{fill:#ff3b4f}.pass{fill:#58f5a6}
-.capbox{fill:#f4ecd9;stroke:#120a18;stroke-width:3}
-.captext{fill:#120a18;font-size:20px;letter-spacing:.6px}
-.titlecard{fill:#04010a}
-.bigword{fill:#f6e8ff;font-size:112px;font-weight:900;letter-spacing:3px;text-anchor:middle;stroke:#a53dff;stroke-width:9;paint-order:stroke;stroke-linejoin:round}
-.small{fill:#d9a8ff;font-size:23px;letter-spacing:3px;text-anchor:middle}
-.tiny{fill:#a98fc7;font-size:18px;letter-spacing:2px;text-anchor:middle}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.overlay{display:none}}
-`;
-  const body = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="A still puppeteer in a violet aura sends threads to four wooden marionettes. They jerk upright, take tasks from a pile and work. A review fails and then passes, and the work merges one piece at a time.">
-${DEFS}<style>${css}${'__KEYFRAMES__'}</style>
-<g style="${shake}">
-${stage('', speedLines(flashLines))}
-<ellipse class="eyeglow" cx="600" cy="84" rx="22" ry="7" filter="url(#eyeGlow)" style="${eyes}"/>
-<path class="eye" style="${eyes}" d="M581 80L596 87L580 87ZM619 80L604 87L620 87Z"/>
-<g transform="translate(${PILE[0]} ${PILE[1]})"><rect class="card" x="-5" y="-5" width="84" height="48" rx="3" transform="rotate(-4 42 24)"/><rect class="card" x="5" y="4" width="84" height="48" rx="3" transform="rotate(3 42 24)"/><text class="pilelabel" x="44" y="-14">THE PILE</text></g>
-<rect class="slot" x="470" y="598" width="260" height="66" rx="4"/><text class="slottext" x="600" y="590">MAIN</text>
-${PUPPETS.map(thread).join('')}
-${PUPPETS.map(puppet).join('')}
-${card('#3', 8.1, 3, toLead)}${card('#2', 7.7, 1, merge(18.6, 612))}${card('#1', 7.3, 0, merge(17.2, 500))}
-${stamp('FAIL', 'fail', 292, 408, FAIL, PASS - 0.1)}
-${stamp('PASS', 'pass', 292, 408, PASS, 17)}${stamp('PASS', 'pass', 562, 408, PASS + 0.25, 18.3)}
-${caption('The lead stays still. Every teammate is on a string.', 4.1, 7)}
-${caption('Each one takes the next free task from the pile.', 7.2, 12.3)}
-${caption('Whoever wrote it does not review it.', 12.5, 16.9)}
-${caption('Merges land one at a time.', 17.1, 20.8)}
-${caption('When the work is done, the strings come off.', 21, 22.2)}
-</g>
-<g class="overlay" style="${titleCard}"><rect class="titlecard" width="${W}" height="${H}"/>
-<g style="transform-origin:600px 320px;${titleWord}"><text class="bigword" x="600" y="350">PUPPETEERING</text></g>
-<g style="${titleSub}"><text class="small" x="600" y="410">ONE LEAD. MANY AGENTS.</text><text class="tiny" x="600" y="448">CONDITION: EVERY STRING HAS A CHECK</text></g></g>
-<g class="overlay" style="${endCard}"><rect class="titlecard" width="${W}" height="${H}"/><text class="small" x="600" y="345">EVERY STRING ACCOUNTED FOR</text></g>
-</svg>`;
-  return body.replace('__KEYFRAMES__', keyframes.join(''));
-}
+  const defs = Object.entries(POSES)
+    .map(([name, pose]) => `<g id="${name}">${raster(figure(pose, W / 2, BAR), 32)}</g>`)
+    .join('');
 
-function staticPuppet(x, lean) {
-  return `<g transform="translate(${x} 215) rotate(${lean} 0 200)">
-<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
-<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
-${limb('M-11 172L-16 208L-12 246M11 172L16 208L12 246')}
-${arm(-1, '')}${arm(1, '')}
-<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g>`;
+  const puppets = PUPPETS.map((p, i) =>
+    Object.keys(POSES)
+      .map((name) => `<g style="${when((t) => poseAt(i, t) === name)}"><use href="#${name}" x="${p.x - W / 2}"/></g>`)
+      .join(''),
+  ).join('');
+
+  const threads = PUPPETS.map((p, i) => {
+    const color = track(
+      (t) => {
+        if (i === 0 && t >= FAIL && t < PASS_1) return RED;
+        if (i === 0 && t >= PASS_1) return GREEN;
+        if (i === 1 && t >= PASS_2) return GREEN;
+        return THREAD;
+      },
+      (c) => `fill:${c}`,
+    );
+    const chunks = threadChunks(TIPS[i], p.x, BAR).map((block, k, all) => {
+      const on = ARRIVE[i] - 0.4 * (1 - k / all.length);
+      const off = SLUMP[i] + 0.4 * (1 - k / all.length);
+      return `<g style="${when((t) => t >= on && t < off)}">${block}</g>`;
+    });
+    return `<g style="${color}">${chunks.join('')}</g>`;
+  }).join('');
+
+  const tags = PUPPETS.map((p, i) => {
+    const col = Math.round(p.x / CW - (p.role.length + 4) / 2);
+    const busy = (t) => within(t, ...WORK[i]);
+    return `<g style="${when((t) => !busy(t))}">${at(col, 28, `[ ${p.role} ]`, 'm')}</g><g style="${when(busy)}">${at(col, 28, `[ ${p.role} ]`, 'l')}</g>`;
+  }).join('');
+
+  const COL = PUPPETS.map((p) => Math.round(p.x / CW));
+  const ROW = 21;
+  const PILE = [48, 15];
+  const REVIEW = [COL[2] - 12, ROW];
+  const tokens = [
+    token('[#1]', [
+      [5.4, ...PILE], [6.4, COL[0] + 8, ROW], [11.6, COL[0] + 8, ROW], [12, ...REVIEW], [FAIL + 0.3, ...REVIEW],
+      [FAIL + 0.8, COL[0] + 8, ROW], [15.8, COL[0] + 8, ROW], [16.1, ...REVIEW], [PASS_1 + 0.7, ...REVIEW], [17.4, 49, 30],
+    ], (t) => t >= 5.4 && t < 24),
+    token('[#2]', [
+      [5.7, ...PILE], [6.7, COL[1] + 8, ROW], [16.9, COL[1] + 8, ROW], [17.2, ...REVIEW], [PASS_2 + 0.4, ...REVIEW], [18.8, 56, 30],
+    ], (t) => t >= 5.7 && t < 24),
+    token('[#3]', [
+      [6, ...PILE], [7, COL[3] - 12, ROW], [10.2, COL[3] - 12, ROW], [10.8, 52, 7],
+    ], (t) => t >= 6 && t < 10.9),
+  ].join('');
+
+  const verdicts =
+    `<g style="${when((t) => t >= FAIL && t < FAIL + 1)}">${at(COL[2] + 8, 19, 'FAIL #1', 'x')}</g>` +
+    `<g style="${when((t) => within(t, [PASS_1, PASS_1 + 0.7]))}">${at(COL[2] + 8, 19, 'PASS #1', 'p')}</g>` +
+    `<g style="${when((t) => within(t, [PASS_2, PASS_2 + 0.6]))}">${at(COL[2] + 8, 19, 'PASS #2', 'p')}</g>`;
+
+  const pile =
+    at(48, 13, 'THE PILE', 'm') +
+    statusRows(48, 14, [
+      ['[ ] #1 free', 'm'], ['[~] #1 building', 't', 5.4], ['[?] #1 in review', 't', 11.6], ['[!] #1 failed', 'x', FAIL],
+      ['[?] #1 in review', 't', 15.8], ['[+] #1 passed', 'p', PASS_1], ['[x] #1 merged', 'p', 17.4],
+    ]) +
+    statusRows(48, 15, [
+      ['[ ] #2 free', 'm'], ['[~] #2 building', 't', 5.7], ['[?] #2 in review', 't', 16.9], ['[x] #2 merged', 'p', 18.8],
+    ]) +
+    statusRows(48, 16, [['[ ] #3 free', 'm'], ['[~] #3 research', 't', 6], ['[x] #3 reported', 'p', 10.2]]) +
+    statusRows(48, 18, [['free: 3', 'm'], ['free: 2', 'm', 5.4], ['free: 1', 'm', 5.7], ['free: 0', 'm', 6]]);
+
+  const leadLog = [
+    ['lead: reads #3', 10.8, 12.4],
+    ['lead: checks #1', PASS_1 + 0.1, 17.4],
+    ['lead: merges #1', 17.4, 18.8],
+    ['lead: merges #2', 18.8, 20.4],
+  ].map(([s, a, b]) => `<g style="${when((t) => t >= a && t < b)}">${at(Math.round((COLS - s.length) / 2), 11, s, 'l')}</g>`).join('');
+
+  const main = at(40, 30, 'main', 'm') + at(45, 30, '=========================', 'c');
+
+  const captions = [
+    caption('the lead stays still. every teammate is on a string.', 2.7, 5.3),
+    caption('each one takes the next free task from the pile.', 5.4, 8.6),
+    caption('writing runs in parallel.', 8.7, 11.6),
+    caption('whoever wrote it does not review it.', 11.7, 16.9),
+    caption('the lead checks, and merges one at a time.', 17, 20.4),
+    caption('when the work is done, the strings come off.', 20.5, 24),
+  ].join('');
+
+  const shake = track(
+    (t) => {
+      if (within(t, [2.6, 2.7], [FAIL, FAIL + 0.1])) return 1;
+      if (within(t, [2.7, 2.8], [FAIL + 0.1, FAIL + 0.2])) return -1;
+      return 0;
+    },
+    (n) => `transform:translateX(${+(n * CW).toFixed(1)}px)`,
+  );
+
+  const title = `<g style="${when((t) => t < 2.6)}"><rect width="${W}" height="${H}" fill="${BG}"/>
+${bigWord(12, TOP, (s, i) => `<g style="${when((t) => t >= 0.2 + i * 0.09)}">${s}</g>`)}
+<g style="${when((t) => t >= 1.4)}">${at(Math.round((COLS - 22) / 2), 19, 'one lead. many agents.', 't')}${at(Math.round((COLS - 25) / 2), 21, 'every string has a check.', 'm')}</g></g>`;
+
+  const face = `<g style="${when((t) => t >= 2.6 && t < 22.2)}">${brows()}${Object.entries(LOOKS).map(([k, look]) => `<g style="${when((t) => gazeAt(t) === k)}">${eyes(look)}</g>`).join('')}</g>
+<g style="${when((t) => t >= FAIL && t < PASS_1)}">${grin()}</g>`;
+
+  const label = 'A puppet theatre drawn in terminal characters. A giant, still figure leans over the stage and sends threads to four marionettes, who jerk upright and take tasks from a pile. The reviewer fails one task and then passes it, and the lead merges the work one piece at a time.';
+  const css = `${CSS}${keyframes.join('')}@media (prefers-reduced-motion:reduce){*{animation:none!important}}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${label}">
+<style>${css}</style>
+<defs>${defs}</defs>
+<rect width="${W}" height="${H}" fill="${BG}"/>
+<g style="${shake}">
+${raster(curtainScene)}
+${raster(giantScene)}
+${face}
+${threads}${puppets}${tags}${main}${pile}${leadLog}${verdicts}${tokens}
+</g>
+<rect width="${W}" height="${TOP}" fill="#1c1610"/><circle cx="20" cy="14" r="5" fill="#7a4522"/><circle cx="37" cy="14" r="5" fill="#7a4522"/><circle cx="54" cy="14" r="5" fill="#7a4522"/>
+<text class="bar" x="${W / 2}" y="19" text-anchor="middle">puppeteering : main</text>
+${captions}
+${title}
+</svg>`;
 }
 
 function buildBanner() {
-  const xs = [70, 205, 995, 1130];
-  const threads = xs
-    .map((x) => {
-      const [hx, hy] = x < 600 ? [462, 152] : [738, 152];
-      return `<path d="M${hx} ${hy}C${(hx + x) / 2} 190 ${x} 195 ${x} 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M${hx} ${hy}C${(hx + x) / 2} 190 ${x} 195 ${x} 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/>`;
-    })
-    .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 470" width="${W}" height="470" role="img" aria-label="Puppeteering: a still figure in a violet aura holds four wooden marionettes on strings.">
-${DEFS}<style>${BASE_CSS}.bigword{fill:#f6e8ff;font-size:72px;font-weight:900;letter-spacing:2px;text-anchor:middle;stroke:#a53dff;stroke-width:7;paint-order:stroke;stroke-linejoin:round}.small{fill:#d9a8ff;font-size:21px;letter-spacing:3px;text-anchor:middle}</style>
-<svg viewBox="0 0 ${W} 470" width="${W}" height="470">${stage().replace(/style="[^"]*"/g, '')}
-<ellipse class="eyeglow" cx="600" cy="84" rx="22" ry="7" filter="url(#eyeGlow)"/><path class="eye" d="M581 80L596 87L580 87ZM619 80L604 87L620 87Z"/>
-${threads}${xs.map((x, i) => staticPuppet(x, [-3, 2, -2, 3][i])).join('')}</svg>
-<text class="bigword" x="600" y="360">PUPPETEERING</text>
-<text class="small" x="600" y="408">ONE LEAD. MANY AGENTS. EVERY STRING.</text>
+  const height = 535;
+  const rows = Math.ceil(height / CH);
+  const bar = 270;
+  const scene = [
+    raster(curtainScene, rows, 0),
+    raster(giantScene, rows, 0),
+    brows(0), eyes(LOOKS.center, 0), grin(0),
+    `<g style="fill:${THREAD}">${PUPPETS.flatMap((p, i) => threadChunks(TIPS[i], p.x, bar, 1, rows, 0)).join('')}</g>`,
+    ...PUPPETS.map((p) => raster(figure(POSES.up, p.x, bar), rows, 0)),
+    `<rect y="${rowY(18, 0) + 8}" width="${W}" height="${height}" fill="${BG}"/>`,
+    bigWord(19, 0),
+    text(Math.round((COLS - 48) / 2), rowY(25, 0), 'one lead. many agents. every string has a check.', 't'),
+  ].join('\n');
+  const label = 'Puppeteering: a giant figure with burning eyes, drawn in terminal characters, leans over a stage and holds four marionettes on strings.';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${height}" width="${W}" height="${height}" role="img" aria-label="${label}">
+<style>${CSS}</style>
+<rect width="${W}" height="${height}" fill="${BG}"/>
+${scene}
 </svg>`;
 }
 
@@ -392,6 +536,10 @@ for (const [file, svg] of [
   ['how-it-works.svg', buildAnimated()],
   ['banner.svg', buildBanner()],
 ]) {
+  // Every animation named on an element must have its keyframes in the stylesheet.
+  for (const [, name] of svg.matchAll(/animation:(a\d+) /g)) {
+    if (!svg.includes(`@keyframes ${name}{`)) throw new Error(`${file}: no keyframes for ${name}`);
+  }
   writeFileSync(join(HERE, file), svg);
   console.log(`wrote ${file} (${Buffer.byteLength(svg)} bytes)`);
 }
