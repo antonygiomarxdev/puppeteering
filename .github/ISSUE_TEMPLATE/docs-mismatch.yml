@@ -1,0 +1,23 @@
+name: Docs mismatch
+description: The guide says something the official Claude Code docs contradict, or the docs changed.
+labels: [docs-mismatch]
+body:
+  - type: input
+    id: guide
+    attributes:
+      label: Where in the guide?
+    validations:
+      required: true
+  - type: input
+    id: docs
+    attributes:
+      label: Link to the official page
+      placeholder: https://code.claude.com/docs/en/...
+    validations:
+      required: true
+  - type: textarea
+    id: difference
+    attributes:
+      label: What is the difference?
+    validations:
+      required: true

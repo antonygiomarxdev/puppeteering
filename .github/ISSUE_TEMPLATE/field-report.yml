@@ -1,0 +1,31 @@
+name: Field report
+description: You ran a rule from the guide. Tell us what happened.
+labels: [field-report]
+body:
+  - type: input
+    id: rule
+    attributes:
+      label: Which rule or section?
+      placeholder: "GUIDE.md, The pile: 3 to 5 teammates"
+    validations:
+      required: true
+  - type: textarea
+    id: ran
+    attributes:
+      label: What did you run?
+      description: Project size, team shape, model, and Claude Code version from `claude --version`. Nothing private.
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: Paste the command or output that shows it.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What should the guide say?
+    validations:
+      required: false

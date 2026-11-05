@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-label="Puppeteering: one lead moves a team of Claude Code agents, each on its own string.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14101f"/>
+      <stop offset="1" stop-color="#2a1a3d"/>
+    </linearGradient>
+    <linearGradient id="thread" gradientUnits="userSpaceOnUse" x1="0" y1="92" x2="0" y2="262">
+      <stop offset="0" stop-color="#f4a6d7"/>
+      <stop offset="1" stop-color="#8c7bff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#bg)"/>
+  <g fill="none" stroke="url(#thread)" stroke-width="2" stroke-linecap="round">
+    <path d="M600 92 C 500 130, 300 150, 180 262"/>
+    <path d="M600 92 C 540 140, 430 170, 390 262"/>
+    <path d="M600 92 C 600 150, 600 190, 600 262"/>
+    <path d="M600 92 C 660 140, 770 170, 810 262"/>
+    <path d="M600 92 C 700 130, 900 150, 1020 262"/>
+  </g>
+  <g fill="none" stroke="#f4a6d7" stroke-width="6" stroke-linecap="round">
+    <path d="M520 78 H680"/>
+    <path d="M600 42 V112"/>
+  </g>
+  <circle cx="600" cy="78" r="9" fill="#f4a6d7"/>
+  <g fill="#14101f" stroke="#8c7bff" stroke-width="2.5">
+    <rect x="122" y="262" width="116" height="62" rx="14"/>
+    <rect x="332" y="262" width="116" height="62" rx="14"/>
+    <rect x="542" y="262" width="116" height="62" rx="14"/>
+    <rect x="752" y="262" width="116" height="62" rx="14"/>
+    <rect x="962" y="262" width="116" height="62" rx="14"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="#d9d2ff" text-anchor="middle">
+    <text x="180" y="299">builder</text>
+    <text x="390" y="299">builder</text>
+    <text x="600" y="299">reviewer</text>
+    <text x="810" y="299">builder</text>
+    <text x="1020" y="299">researcher</text>
+  </g>
+  <text x="600" y="376" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">Puppeteering</text>
+  <text x="600" y="404" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" fill="#c9bfe8">One lead. Many agents. Every string accounted for.</text>
+</svg>
