@@ -1,356 +1,397 @@
-#!/usr/bin/env node
-// Writes assets/how-it-works.svg: a 30-second loop built from CSS keyframes only.
-// GitHub shows SVG through an img tag, so there is no script and no external font.
+// Writes assets/how-it-works.svg (animated) and assets/banner.svg (still).
+// Original artwork: a manga-styled puppeteer and wooden marionettes, CSS only.
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const LOOP = 30;
-const C = {
-  bg: '#14101f', panel: '#1d1730', row: '#241c3b', line: '#3a2f5c', track: '#2e2548',
-  text: '#ece6ff', muted: '#9d93b8', head: '#cfc6ff',
-  pink: '#f4a6d7', violet: '#8c7bff', green: '#7ee2a8', amber: '#ffb86b',
-};
-const FONT = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace";
-const BASE = { op: 1, tx: 0, ty: 0, s: 1, fill: C.violet };
+const HERE = dirname(fileURLToPath(import.meta.url));
+const LOOP = 24;
+const W = 1200;
+const H = 675;
+const JERK = 'cubic-bezier(.2,1.7,.4,1)';
+const SNAP = 'steps(1)';
 
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const pct = (t) => Number(((t / LOOP) * 100).toFixed(2));
+const keyframes = [];
+let counter = 0;
 
-// Each animated element gets its own keyframes. Its inline style is the final state,
-// which is what shows when the user prefers reduced motion (animations are removed).
-const rules = [];
-let seq = 0;
-
-// stops: [t, partial props, ease for the segment that starts here]. Values hold until the next stop.
-function track(given, stops) {
-  const keys = new Set(Object.keys(given));
-  let cur = { ...BASE, ...given };
-  const frames = [{ t: 0, p: cur, e: 'step-end' }];
-  for (const [t, partial, ease = 'step-end'] of [...stops].sort((a, b) => a[0] - b[0])) {
-    for (const k of Object.keys(partial)) keys.add(k);
-    cur = { ...cur, ...partial };
-    const frame = { t, p: cur, e: ease };
-    if (frames[frames.length - 1].t === t) frames[frames.length - 1] = frame;
-    else frames.push(frame);
-  }
-  return { keys: [...keys], frames, final: cur };
-}
-
-function css(p, keys) {
-  const out = [];
-  if (keys.includes('op')) out.push(`opacity:${p.op}`);
-  const tr = [];
-  if (keys.includes('tx') || keys.includes('ty')) tr.push(`translate(${p.tx}px,${p.ty}px)`);
-  if (keys.includes('s')) tr.push(`scale(${p.s},1)`);
-  if (tr.length) out.push(`transform:${tr.join(' ')}`);
-  if (keys.includes('fill')) out.push(`fill:${p.fill}`);
-  return out.join(';');
-}
-
-function anim(given, stops, extra = '') {
-  const name = `k${(seq++).toString(36)}`;
-  const { keys, frames, final } = track(given, stops);
-  const frameCss = (p, e) => `${css(p, keys)}${e === 'linear' ? ';animation-timing-function:linear' : ''}`;
-  const body = frames.map((f) => `${pct(f.t)}%{${frameCss(f.p, f.e)}}`).join('') + `100%{${css(final, keys)}}`;
-  rules.push(`.${name}{animation:${name} ${LOOP}s step-end infinite}@keyframes ${name}{${body}}`);
-  return ` class="${extra ? `${extra} ` : ''}${name}" style="${css(final, keys)}"`;
-}
-
-// windows: [[on, off], ...]; off null means visible to the end of the loop.
-function vis(windows) {
-  const init = { op: windows[0][0] === 0 ? 1 : 0 };
-  const stops = [];
-  for (const [on, off] of windows) {
-    if (on > 0) stops.push([on, { op: 1 }]);
-    if (off !== null) stops.push([off, { op: 0 }]);
-  }
-  return { init, stops };
-}
-
-function text(x, y, s, o) {
-  const { size = 14, fill = C.text, weight = 400, anchor = 'start', box, a = '' } = o;
-  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}" data-box="${box.join(' ')}"${a}>${esc(s)}</text>`;
-}
-
-// items: [label, fill, windows]; stacked texts share one spot and show one at a time.
-function stacked(x, y, items, o) {
-  return items
-    .map(([s, fill, windows]) => {
-      const v = vis(windows);
-      return text(x, y, s, { ...o, fill, a: anim(v.init, v.stops) });
+// stops: [seconds, css, optional easing]. The first and last stops pad to 0% and 100%.
+function anim(stops) {
+  const name = `a${counter++}`;
+  const padded = [...stops];
+  if (padded[0][0] !== 0) padded.unshift([0, padded[0][1]]);
+  if (padded.at(-1)[0] !== LOOP) padded.push([LOOP, padded.at(-1)[1]]);
+  const body = padded
+    .map(([t, css, ease]) => {
+      const pct = +((t / LOOP) * 100).toFixed(2);
+      return `${pct}%{${css}${ease ? `;animation-timing-function:${ease}` : ''}}`;
     })
     .join('');
+  keyframes.push(`@keyframes ${name}{${body}}`);
+  return `animation:${name} ${LOOP}s linear infinite`;
 }
 
-const LEAD_ACTIONS = [
-  ['writing #1', C.text, [[0, 1.0]]],
-  ['writing #2', C.text, [[1.0, 1.7]]],
-  ['writing #3', C.text, [[1.7, 2.4]]],
-  ['writing #4', C.text, [[2.4, 3.0]]],
-  ['writing #5', C.text, [[3.0, 3.6]]],
-  ['writing #6', C.text, [[3.6, 4.2]]],
-  ['assigning work', C.text, [[4.2, 11.5]]],
-  ['re-running check #1', C.text, [[11.5, 12.5]]],
-  ['waiting on review #3', C.text, [[12.5, 17.5]]],
-  ['#1 and #3 pass', C.text, [[17.5, 22.0]]],
-  ['queueing #5 and #6', C.text, [[22.0, 24.5]]],
-  ['merging #5', C.text, [[24.5, 26.5]]],
-  ['merging #6', C.text, [[26.5, 27.5]]],
-  ['all six done', C.text, [[27.5, null]]],
-];
-
-const LEGEND = [
-  [C.pink, 'lead, main session'],
-  [C.violet, 'teammates'],
-  [C.green, 'done, PASS'],
-  [C.amber, 'blocked, FAIL'],
-];
-
-const COUNTER = [
-  ['done 0/6', C.green, [[0, 17.5]]],
-  ['done 2/6', C.green, [[17.5, 21.0]]],
-  ['done 4/6', C.green, [[21.0, 24.5]]],
-  ['done 5/6', C.green, [[24.5, 27.5]]],
-  ['done 6/6', C.green, [[27.5, null]]],
-];
-
-const ROWS = [
-  {
-    id: '#1', title: 'build the API', entry: 0.3, lock: null,
-    status: [
-      ['open', C.muted, [[0.3, 5.9]]],
-      ['claimed by builder-a', C.violet, [[5.9, 12.5]]],
-      ['built, checked', C.violet, [[12.5, 15.5]]],
-      ['reopened: fix', C.amber, [[15.5, 17.5]]],
-      ['done', C.green, [[17.5, null]]],
-    ],
-  },
-  {
-    id: '#2', title: 'build the screen', entry: 1.0, lock: null,
-    status: [
-      ['open', C.muted, [[1.0, 6.2]]],
-      ['claimed by builder-b', C.violet, [[6.2, 13.0]]],
-      ['built, awaiting review', C.violet, [[13.0, 21.0]]],
-      ['done', C.green, [[21.0, null]]],
-    ],
-  },
-  {
-    id: '#3', title: 'review the API', entry: 1.7, lock: [[1.7, 12.5]],
-    status: [
-      ['blocked', C.amber, [[1.7, 12.5]]],
-      ['open', C.muted, [[12.5, 13.2]]],
-      ['claimed by reviewer-a', C.violet, [[13.2, 15.5]]],
-      ['FAIL', C.amber, [[15.5, 17.5]]],
-      ['done', C.green, [[17.5, null]]],
-    ],
-  },
-  {
-    id: '#4', title: 'review the screen', entry: 2.4, lock: [[2.4, 13.0]],
-    status: [
-      ['blocked', C.amber, [[2.4, 13.0]]],
-      ['open', C.muted, [[13.0, 18.0]]],
-      ['claimed by reviewer-a', C.violet, [[18.0, 21.0]]],
-      ['done', C.green, [[21.0, null]]],
-    ],
-  },
-  {
-    id: '#5', title: 'merge the API', entry: 3.0, lock: [[3.0, 22.0]],
-    status: [
-      ['blocked', C.amber, [[3.0, 22.0]]],
-      ['queued for merge', C.violet, [[22.0, 24.5]]],
-      ['merged', C.green, [[24.5, null]]],
-    ],
-  },
-  {
-    id: '#6', title: 'merge the screen', entry: 3.6, lock: [[3.6, 22.0]],
-    status: [
-      ['blocked', C.amber, [[3.6, 22.0]]],
-      ['queued for merge', C.violet, [[22.0, 27.5]]],
-      ['merged', C.green, [[27.5, null]]],
-    ],
-  },
-];
-
-const SLOT1 = [
-  ['empty', C.muted, [[0, 22.0]]],
-  ['#5 queued', C.text, [[22.0, 22.5]]],
-  ['#5 merging the API', C.text, [[22.5, 24.5]]],
-  ['#5 merged', C.green, [[24.5, null]]],
-];
-
-const SLOT2 = [
-  ['empty', C.muted, [[0, 22.0]]],
-  ['#6 waiting', C.text, [[22.0, 24.5]]],
-  ['#6 re-integrating main', C.text, [[24.5, 26.5]]],
-  ['#6 merging the screen', C.text, [[26.5, 27.5]]],
-  ['#6 merged', C.green, [[27.5, null]]],
-];
-
-// Session log: each message enters at the bottom line and moves up one line per new message; four lines show.
-const MSGS = [
-  [5.9, 'builder-a claimed #1'],
-  [7.0, 'builder-b claimed #2'],
-  [11.5, 'builder-a → lead: done, tests pass'],
-  [12.5, 'lead: check passed, #3 unlocked'],
-  [14.0, 'reviewer-a claimed #3'],
-  [15.5, 'reviewer-a: FAIL, a mutant survives'],
-  [16.2, '#1 back to builder-a to fix'],
-  [17.5, 'reviewer-a: PASS on #1 and #3'],
-  [18.8, 'reviewer-a claimed #4'],
-  [21.0, '#2 and #4 done'],
-  [22.0, '#5 and #6 unlocked, queued to merge'],
-  [24.5, 'merged #5'],
-  [26.5, '#6: re-integrating main'],
-  [27.5, 'merged #6: 6/6 done'],
-];
-
-function row(i, r) {
-  const y = 116 + 52 * i;
-  let s = `<g${anim({ op: 0 }, [[r.entry, { op: 1 }]])}>`;
-  s += `<rect x="346" y="${y}" width="468" height="44" rx="8" fill="${C.row}" stroke="${C.line}"/>`;
-  s += text(362, y + 28, r.id, { size: 15, weight: 700, box: [358, y + 12, 400, y + 34] });
-  s += text(408, y + 28, r.title, { size: 15, box: [404, y + 12, 590, y + 34] });
-  s += stacked(600, y + 28, r.status, { size: 14, box: [596, y + 12, 806, y + 34] });
-  if (r.lock) {
-    const v = vis(r.lock);
-    s += `<g${anim(v.init, v.stops)}><rect x="790" y="${y + 20}" width="14" height="11" rx="2" fill="${C.amber}"/>`;
-    s += `<path d="M793 ${y + 20}V${y + 16}a4 4 0 0 1 8 0V${y + 20}" fill="none" stroke="${C.amber}" stroke-width="2"/></g>`;
-  }
-  return s + '</g>';
-}
-
-function card(y0, name, status, task, bar) {
-  let s = `<rect x="860" y="${y0}" width="300" height="104" rx="10" fill="${C.panel}" stroke="${C.line}"/>`;
-  s += text(876, y0 + 26, name, { size: 16, weight: 700, fill: C.violet, box: [872, y0 + 12, 1000, y0 + 34] });
-  s += stacked(1144, y0 + 26, status, { size: 14, anchor: 'end', box: [1000, y0 + 12, 1148, y0 + 34] });
-  s += stacked(876, y0 + 52, task, { size: 14, box: [872, y0 + 38, 1148, y0 + 60] });
-  s += `<rect x="876" y="${y0 + 76}" width="268" height="8" rx="4" fill="${C.track}"/>`;
-  s += `<rect x="876" y="${y0 + 76}" width="268" height="8" rx="4"${anim({ s: 0, fill: C.violet }, bar, 'bar')}/>`;
-  return s;
-}
-
-// A dot leaves a teammate card, travels to the task row's owner slot, and vanishes on arrival.
-function dot(cx, cy, claim, arrive, dx, dy) {
-  const a = anim({ op: 0, tx: 0, ty: 0 }, [
-    [claim, { op: 1, tx: 0, ty: 0 }, 'linear'],
-    [arrive - 0.05, { tx: dx, ty: dy }],
-    [arrive, { op: 0 }],
+function fadeWindow(from, to, fade = 0.25) {
+  return anim([
+    [0, 'opacity:0'],
+    [from, 'opacity:0'],
+    [from + fade, 'opacity:1'],
+    [to, 'opacity:1'],
+    [to + fade, 'opacity:0'],
   ]);
-  return `<circle cx="${cx}" cy="${cy}" r="5" fill="${C.violet}"${a}/>`;
 }
 
-function messageLine(k) {
-  const stops = [];
-  for (let j = k; j < MSGS.length; j++) {
-    const d = j - k;
-    if (d > 3) {
-      stops.push([MSGS[j][0], { op: 0, ty: -96 }]);
-      break;
-    }
-    stops.push([MSGS[j][0], { op: 1, ty: -24 * d }]);
-  }
-  return text(56, 686, MSGS[k][1], { box: [52, 672, 1150, 692], a: anim({ op: 0, ty: 0 }, stops) });
+const PUPPETS = [
+  { name: 'BUILDER', x: 170, hand: [462, 152], attach: 4.2 },
+  { name: 'BUILDER', x: 440, hand: [462, 152], attach: 4.5 },
+  { name: 'REVIEWER', x: 760, hand: [738, 152], attach: 4.8 },
+  { name: 'RESEARCHER', x: 1030, hand: [738, 152], attach: 5.1 },
+];
+const SLUMP_END = 21.2;
+const FAIL = 13.2;
+const PASS = 16.2;
+
+function thread(p, i) {
+  const [hx, hy] = p.hand;
+  const midY = 215 + Math.abs(p.x - hx) * 0.1;
+  const d = `M${hx} ${hy}C${(hx + p.x) / 2} ${midY} ${p.x} ${midY + 20} ${p.x} 300`;
+  const draw = anim([
+    [0, 'stroke-dashoffset:1;opacity:0'],
+    [p.attach, 'stroke-dashoffset:1;opacity:1', 'ease-out'],
+    [p.attach + 0.3, 'stroke-dashoffset:0;opacity:1'],
+    [SLUMP_END, 'stroke-dashoffset:0;opacity:1'],
+    [SLUMP_END + 0.5, 'stroke-dashoffset:0;opacity:0'],
+  ]);
+  const color =
+    i === 0
+      ? anim([
+          [0, 'stroke:#f6ddff'],
+          [FAIL, 'stroke:#f6ddff', SNAP],
+          [FAIL + 0.01, 'stroke:#ff3b4f'],
+          [PASS, 'stroke:#ff3b4f', SNAP],
+          [PASS + 0.01, 'stroke:#58f5a6'],
+          [SLUMP_END, 'stroke:#58f5a6'],
+        ])
+      : i === 1
+        ? anim([
+            [0, 'stroke:#f6ddff'],
+            [PASS, 'stroke:#f6ddff', SNAP],
+            [PASS + 0.01, 'stroke:#58f5a6'],
+            [SLUMP_END, 'stroke:#58f5a6'],
+          ])
+        : 'stroke:#f6ddff';
+  return `<g style="${color}"><g opacity=".3"><path class="glow" pathLength="1" d="${d}" style="${draw}"/></g><path class="line" pathLength="1" d="${d}" style="${draw}"/></g>`;
 }
 
-function leadPanel() {
-  let s = `<rect x="40" y="76" width="260" height="476" rx="10" fill="${C.panel}" stroke="${C.line}"/>`;
-  s += text(56, 104, 'LEAD', { size: 16, weight: 700, fill: C.pink, box: [52, 90, 140, 110] });
-  s += text(56, 128, 'main session', { size: 14, fill: C.muted, box: [52, 116, 290, 134] });
-  s += stacked(56, 176, LEAD_ACTIONS, { size: 15, box: [52, 160, 290, 182] });
-  s += text(56, 400, 'legend', { size: 14, fill: C.muted, box: [52, 388, 290, 406] });
-  LEGEND.forEach(([c, label], i) => {
-    const y = 428 + 24 * i;
-    s += `<rect x="56" y="${y - 11}" width="12" height="12" rx="3" fill="${c}"/>`;
-    s += text(76, y, label, { size: 14, box: [72, y - 14, 290, y + 6] });
-  });
-  return s;
+function limb(d) {
+  return `<path class="limb" d="${d}"/><path class="limbwood" d="${d}"/>`;
 }
 
-function taskPanel() {
-  let s = `<rect x="330" y="76" width="500" height="364" rx="10" fill="${C.panel}" stroke="${C.line}"/>`;
-  s += text(346, 102, 'TASK LIST', { size: 16, weight: 700, fill: C.head, box: [342, 88, 520, 108] });
-  s += stacked(814, 102, COUNTER, { size: 15, anchor: 'end', box: [660, 88, 814, 108] });
-  ROWS.forEach((r, i) => {
-    s += row(i, r);
-  });
-  return s;
+function arm(side, moves) {
+  const x = side * 25;
+  const style = moves ? ` style="transform-origin:${x}px 114px;${moves}"` : '';
+  return `<g${style}>${limb(`M${x} 114L${x + side * 15} 148L${x + side * 6} 182`)}<circle class="joint" cx="${x}" cy="114" r="5"/><circle class="joint" cx="${x + side * 15}" cy="148" r="4"/></g>`;
 }
 
-function mergePanel() {
-  let s = `<rect x="860" y="428" width="300" height="124" rx="10" fill="${C.panel}" stroke="${C.line}"/>`;
-  s += text(876, 452, 'MERGE QUEUE', { size: 16, weight: 700, fill: C.head, box: [872, 438, 1040, 458] });
-  s += `<rect x="874" y="464" width="272" height="34" rx="6" fill="${C.row}" stroke="${C.line}"/>`;
-  s += stacked(888, 486, SLOT1, { size: 14, box: [880, 470, 1140, 492] });
-  s += `<rect x="874" y="506" width="272" height="34" rx="6" fill="${C.row}" stroke="${C.line}"/>`;
-  s += stacked(888, 528, SLOT2, { size: 14, box: [880, 512, 1140, 534] });
-  return s;
-}
-
-function logPanel() {
-  let s = `<rect x="40" y="568" width="1120" height="132" rx="10" fill="${C.panel}" stroke="${C.line}"/>`;
-  s += text(56, 590, 'SESSION LOG', { size: 14, fill: C.muted, box: [52, 578, 220, 596] });
-  s += MSGS.map((_, k) => messageLine(k)).join('');
-  return s;
-}
-
-function statusLine() {
-  let s = `<rect x="20" y="712" width="1160" height="1" fill="${C.line}"/>`;
-  s += stacked(56, 730, [
-    ['status: working', C.muted, [[0, 28]]],
-    ['every string accounted for', C.green, [[28, null]]],
-  ], { size: 15, box: [52, 716, 1150, 736] });
-  return s;
-}
-
-function build() {
-  const parts = [
-    `<rect x="20" y="20" width="1160" height="720" rx="14" fill="${C.bg}" stroke="${C.line}" stroke-width="2"/>`,
-    `<circle cx="44" cy="38" r="6" fill="${C.pink}"/><circle cx="62" cy="38" r="6" fill="${C.violet}"/><circle cx="80" cy="38" r="6" fill="${C.amber}"/>`,
-    text(100, 44, 'puppeteering: an agent team at work', { size: 18, weight: 700, box: [96, 26, 700, 50] }),
-    `<rect x="20" y="56" width="1160" height="1" fill="${C.line}"/>`,
-    leadPanel(),
-    taskPanel(),
-    card(76, 'builder-a',
-      [['idle', C.muted, [[0, 5.0]]], ['building', C.violet, [[5.0, 11.5]]], ['reported done', C.violet, [[11.5, 15.5]]], ['fixing', C.amber, [[15.5, 17.5]]], ['done', C.green, [[17.5, null]]]],
-      [['idle', C.muted, [[0, 5.0]]], ['#1 build the API', C.text, [[5.0, 15.5]]], ['#1 fix the mutant', C.text, [[15.5, 17.5]]], ['#1 build the API, done', C.text, [[17.5, null]]]],
-      [[5.0, { s: 0 }, 'linear'], [11.5, { s: 1 }], [15.5, { s: 0, fill: C.violet }, 'linear'], [16.8, { s: 1 }], [17.5, { fill: C.green }]],
-    ),
-    card(192, 'builder-b',
-      [['idle', C.muted, [[0, 6.2]]], ['building', C.violet, [[6.2, 13.0]]], ['waiting review', C.violet, [[13.0, 21.0]]], ['done', C.green, [[21.0, null]]]],
-      [['idle', C.muted, [[0, 6.2]]], ['#2 build the screen', C.text, [[6.2, 13.0]]], ['#2 built, awaiting review', C.text, [[13.0, 21.0]]], ['#2 done', C.text, [[21.0, null]]]],
-      [[6.2, { s: 0 }, 'linear'], [13.0, { s: 1 }], [21.0, { fill: C.green }]],
-    ),
-    card(308, 'reviewer-a',
-      [['idle', C.muted, [[0, 13.2]]], ['reviewing', C.violet, [[13.2, 15.5]]], ['FAIL', C.amber, [[15.5, 17.5]]], ['PASS', C.green, [[17.5, 18.0]]], ['reviewing', C.violet, [[18.0, 21.0]]], ['PASS', C.green, [[21.0, null]]]],
-      [['idle', C.muted, [[0, 13.2]]], ['#3 review the API', C.text, [[13.2, 18.0]]], ['#4 review the screen', C.text, [[18.0, null]]]],
-      [[14.0, { s: 0, fill: C.violet }, 'linear'], [15.5, { s: 1, fill: C.amber }], [17.5, { fill: C.green }], [18.0, { s: 0, fill: C.violet }, 'linear'], [20.5, { s: 1 }], [21.0, { fill: C.green }]],
-    ),
-    mergePanel(),
-    logPanel(),
-    statusLine(),
-    dot(858, 128, 5.0, 5.9, -262, 10),
-    dot(858, 244, 6.2, 7.0, -262, -54),
-    dot(858, 360, 13.2, 14.0, -262, -118),
-    dot(858, 360, 18.0, 18.8, -262, -66),
+function hammer(from, to, step = 0.42) {
+  const stops = [
+    [0, 'transform:rotate(0)'],
+    [from - 0.01, 'transform:rotate(0)', SNAP],
   ];
-  return parts.join('\n');
+  let up = true;
+  for (let t = from; t < to; t += step) {
+    stops.push([t, `transform:rotate(${up ? -72 : -12}deg)`, SNAP]);
+    up = !up;
+  }
+  stops.push([to, 'transform:rotate(0)', SNAP]);
+  return stops;
 }
 
-const body = build();
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d">
-<title id="t">Puppeteering: an agent team at work</title>
-<desc id="d">A 30-second loop: a lead writes six tasks, two builders claim them, a reviewer fails one and passes it after a fix, and two merges land one at a time.</desc>
-<style>
-text{font-family:${FONT}}
-.bar{transform-box:fill-box;transform-origin:0 50%}
-${rules.join('\n')}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}
-</style>
-${body}
-</svg>
+function puppet(p, i) {
+  const rise = p.attach + 0.9;
+  const body = anim([
+    [0, 'transform:translateY(96px) rotate(19deg)'],
+    [rise, 'transform:translateY(96px) rotate(19deg)', JERK],
+    [rise + 0.35, 'transform:translateY(0) rotate(0)'],
+    [FAIL, 'transform:translateY(0) rotate(0)', SNAP],
+    ...(i === 0
+      ? [
+          [FAIL + 0.02, 'transform:translateY(0) rotate(-9deg)', SNAP],
+          [FAIL + 0.22, 'transform:translateY(0) rotate(7deg)', SNAP],
+          [FAIL + 0.42, 'transform:translateY(0) rotate(0)'],
+        ]
+      : []),
+    [SLUMP_END, 'transform:translateY(0) rotate(0)', 'ease-in'],
+    [SLUMP_END + 0.6, 'transform:translateY(96px) rotate(19deg)'],
+  ]);
+  const strings = anim([
+    [0, 'transform:scaleY(2.4);opacity:0'],
+    [p.attach + 0.3, 'transform:scaleY(2.4);opacity:0'],
+    [p.attach + 0.45, 'transform:scaleY(2.4);opacity:1'],
+    [rise, 'transform:scaleY(2.4);opacity:1', JERK],
+    [rise + 0.35, 'transform:scaleY(1);opacity:1'],
+    [SLUMP_END, 'transform:scaleY(1);opacity:1'],
+    [SLUMP_END + 0.5, 'transform:scaleY(1);opacity:0'],
+  ]);
+  const bar = fadeWindow(p.attach + 0.25, SLUMP_END, 0.15);
+  const head = anim([
+    [0, 'transform:rotate(26deg)'],
+    [rise, 'transform:rotate(26deg)', JERK],
+    [rise + 0.5, 'transform:rotate(0)'],
+    [SLUMP_END, 'transform:rotate(0)'],
+    [SLUMP_END + 0.5, 'transform:rotate(26deg)'],
+  ]);
+  const working = { 0: [[9.4, 12.6], [14.2, 16]], 1: [[9.6, 12.8]], 2: [[12.6, 13.2], [15.6, 16.2]], 3: [[9.2, 11]] }[i];
+  const stops = working.flatMap(([a, b], n) => (n === 0 ? hammer(a, b) : hammer(a, b).slice(2)));
+  const right = anim(stops);
+  return `<g transform="translate(${p.x} 300)">
+<g style="${bar}"><path class="bar" d="M-34 0H34"/><circle class="joint" r="4"/></g>
+<g style="transform-origin:0 0;${strings}"><path class="string" d="M-25 0V114M25 0V114M0 0V62"/></g>
+<g style="transform-origin:0 200px;${body}">
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+${limb('M-11 172L-16 208L-12 246M11 172L16 208L12 246')}
+<circle class="joint" cx="-16" cy="208" r="4"/><circle class="joint" cx="16" cy="208" r="4"/>
+${arm(-1, '')}${arm(1, right)}
+<g style="transform-origin:0 104px;${head}">
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/>
+<circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/>
+</g></g>
+<text class="tag" y="282">${p.name}</text></g>`;
+}
+
+const PILE = [905, 58];
+
+function card(label, startAt, puppetIndex, thenTo) {
+  const hold = [PUPPETS[puppetIndex].x + 42, 425];
+  const stops = [
+    [0, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
+    [startAt, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`, 'cubic-bezier(.5,0,.2,1)'],
+    [startAt + 0.7, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`],
+    ...thenTo(hold),
+  ];
+  return `<g style="${anim(stops)}"><rect class="card" width="84" height="48" rx="3"/><text class="cardtext" x="42" y="31">${label}</text></g>`;
+}
+
+const merge = (at, slotX) => (hold) => [
+  [at, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`, 'ease-in'],
+  [at + 0.55, `transform:translate(${slotX}px,606px);opacity:1`],
+  [22.4, `transform:translate(${slotX}px,606px);opacity:1`],
+  [22.8, `transform:translate(${slotX}px,606px);opacity:0`],
+  [23.9, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:0`],
+  [24, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
+];
+
+const toLead = (hold) => [
+  [11.1, `transform:translate(${hold[0]}px,${hold[1]}px);opacity:1`, 'ease-in'],
+  [11.8, 'transform:translate(558px,110px);opacity:0'],
+  [23.9, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:0`],
+  [24, `transform:translate(${PILE[0]}px,${PILE[1]}px);opacity:1`],
+];
+
+function stamp(text, cls, x, y, at, until) {
+  const style = anim([
+    [0, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(2.4)`],
+    [at, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(2.4)`, 'cubic-bezier(.2,1.5,.5,1)'],
+    [at + 0.16, `opacity:1;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
+    [until, `opacity:1;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
+    [until + 0.2, `opacity:0;transform:translate(${x}px,${y}px) rotate(-12deg) scale(1)`],
+  ]);
+  return `<text class="stamp ${cls}" style="${style}">${text}</text>`;
+}
+
+function caption(text, from, to) {
+  const width = text.length * 11.6 + 36;
+  return `<g style="${fadeWindow(from, to, 0.15)}"><rect class="capbox" x="28" y="28" width="${width}" height="44"/><text class="captext" x="46" y="57">${text}</text></g>`;
+}
+
+function speedLines(style) {
+  const lines = [];
+  for (let i = 0; i < 44; i++) {
+    const a = (i / 44) * Math.PI * 2 + (i % 3) * 0.02;
+    const inner = 150 + ((i * 37) % 90);
+    const outer = 1300;
+    const wedge = 0.004 + ((i * 13) % 7) * 0.0012;
+    const px = (r, t) => `${(600 + Math.cos(t) * r).toFixed(0)} ${(120 + Math.sin(t) * r).toFixed(0)}`;
+    lines.push(`M${px(inner, a)}L${px(outer, a - wedge)}L${px(outer, a + wedge)}Z`);
+  }
+  return `<path class="speed" d="${lines.join('')}" style="${style}"/>`;
+}
+
+const FLICKER_A = 'transform-origin:600px 230px;animation:flick 1.3s ease-in-out infinite alternate';
+const FLICKER_B = 'transform-origin:600px 230px;animation:flick 1.9s ease-in-out infinite alternate-reverse';
+
+const AURA = `<g filter="url(#ragged)">
+<path class="aura1" style="${FLICKER_A}" d="M600 -30C520 20 560 60 490 70C430 90 400 170 440 240C510 290 690 290 760 240C800 170 770 90 710 70C640 60 680 20 600 -30Z"/>
+<path class="aura2" style="${FLICKER_B}" d="M600 -5C540 40 570 70 525 85C480 105 465 175 490 225C540 265 660 265 710 225C735 175 720 105 675 85C630 70 660 40 600 -5Z"/>
+</g>`;
+
+const LEAD = `<path class="robe" d="M600 34C566 34 548 66 552 104C520 112 492 128 462 146L470 160C505 150 530 146 548 150C540 185 520 215 505 232L560 222L582 240L604 224L628 242L646 222L695 232C680 215 660 185 652 150C670 146 695 150 730 160L738 146C708 128 680 112 648 104C652 66 634 34 600 34Z"/>
+<ellipse class="void" cx="600" cy="84" rx="27" ry="32"/>
+<path class="finger" d="M462 152L448 140M462 152L444 148M462 152L444 156M462 152L448 165M738 152L752 140M738 152L756 148M738 152L756 156M738 152L752 165"/>`;
+
+const DEFS = `<defs>
+<radialGradient id="sky" cx="50%" cy="18%" r="85%"><stop offset="0" stop-color="#3a1466"/><stop offset=".42" stop-color="#150726"/><stop offset="1" stop-color="#05020a"/></radialGradient>
+<pattern id="tone" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="4.5" cy="4.5" r="1.5" fill="#c9a2ff"/></pattern>
+<radialGradient id="toneFade" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<mask id="toneMask"><rect width="${W}" height="${H}" fill="url(#toneFade)"/></mask>
+<filter id="ragged" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".022 .05" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="46"/><feGaussianBlur stdDeviation="1.6"/></filter>
+<filter id="eyeGlow" x="-100%" y="-300%" width="300%" height="700%"><feGaussianBlur stdDeviation="5"/></filter>
+</defs>`;
+
+const BASE_CSS = `
+.aura1{fill:#a53dff;opacity:.5}.aura2{fill:#ff4fd8;opacity:.38}
+.robe{fill:#07030d;stroke:#d9a8ff;stroke-width:2.5;stroke-linejoin:round}
+.void{fill:#000}
+.finger{stroke:#d9a8ff;stroke-width:3;stroke-linecap:round;fill:none}
+.eye{fill:#ff8bf0}.eyeglow{fill:#ff4fd8}
+.glow,.line,.string,.bar{fill:none;stroke-linecap:round}
+.glow{stroke-width:8;stroke-dasharray:1}
+.line{stroke-width:1.8;stroke-dasharray:1}
+.glow,.line{stroke:inherit}
+.string{stroke:#f6ddff;stroke-width:1.3}
+.bar{stroke:#d9c6a2;stroke-width:6}
+.wood{fill:#d8c39b;stroke:#120a18;stroke-width:3;stroke-linejoin:round}
+.limb{fill:none;stroke:#120a18;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.limbwood{fill:none;stroke:#d8c39b;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.joint{fill:#6d3fb0;stroke:#120a18;stroke-width:2}
+.seam{stroke:#8d7650;stroke-width:1.5;fill:none}
+.hollow{fill:#120a18}
+text{font-family:Impact,'Arial Black','Helvetica Neue',Arial,sans-serif}
+.tag{fill:#e8d8ff;font-size:17px;letter-spacing:3px;text-anchor:middle}
+.card{fill:#f4ecd9;stroke:#120a18;stroke-width:3}
+.cardtext{fill:#120a18;font-size:22px;text-anchor:middle}
+.slot{fill:#0c0614;stroke:#d9a8ff;stroke-width:2.5}
+.slottext{fill:#d9a8ff;font-size:18px;letter-spacing:5px;text-anchor:middle}
+.pilelabel{fill:#e8d8ff;font-size:15px;letter-spacing:3px;text-anchor:middle}
+.tone{fill:url(#tone)}
+.speed{fill:#f6e8ff}
 `;
 
-const out = join(dirname(fileURLToPath(import.meta.url)), 'how-it-works.svg');
-writeFileSync(out, svg);
-console.log(`wrote ${out} (${Buffer.byteLength(svg)} bytes)`);
+function stage(extraInStage = '', behind = '') {
+  return `<rect x="-40" y="-40" width="${W + 80}" height="${H + 80}" fill="url(#sky)"/>
+<rect class="tone" width="${W}" height="${H}" mask="url(#toneMask)"/>
+${behind}${AURA}${LEAD}${extraInStage}`;
+}
+
+function buildAnimated() {
+  const eyes = anim([
+    [0, 'opacity:0'],
+    [3.3, 'opacity:0', SNAP],
+    [3.35, 'opacity:1'],
+    [22.3, 'opacity:1', SNAP],
+    [22.4, 'opacity:0'],
+  ]);
+  const shake = anim([
+    [0, 'transform:translate(0,0)'],
+    [3.3, 'transform:translate(0,0)', SNAP],
+    [3.34, 'transform:translate(9px,-7px)', SNAP],
+    [3.42, 'transform:translate(-8px,6px)', SNAP],
+    [3.5, 'transform:translate(0,0)'],
+    [FAIL, 'transform:translate(0,0)', SNAP],
+    [FAIL + 0.04, 'transform:translate(-11px,6px)', SNAP],
+    [FAIL + 0.12, 'transform:translate(10px,-6px)', SNAP],
+    [FAIL + 0.2, 'transform:translate(-6px,3px)', SNAP],
+    [FAIL + 0.28, 'transform:translate(0,0)'],
+  ]);
+  const flashLines = anim([
+    [0, 'opacity:0'],
+    [3.3, 'opacity:0', SNAP],
+    [3.32, 'opacity:.75'],
+    [3.95, 'opacity:0'],
+    [FAIL, 'opacity:0', SNAP],
+    [FAIL + 0.02, 'opacity:.45'],
+    [FAIL + 0.5, 'opacity:0'],
+  ]);
+  const titleCard = anim([
+    [0, 'opacity:1'],
+    [3.2, 'opacity:1', SNAP],
+    [3.3, 'opacity:0'],
+    [23.6, 'opacity:0'],
+    [24, 'opacity:1'],
+  ]);
+  const titleWord = anim([
+    [0, 'transform:scale(1.12);opacity:0'],
+    [0.3, 'transform:scale(1.12);opacity:0', 'cubic-bezier(.1,.8,.3,1)'],
+    [0.75, 'transform:scale(1);opacity:1'],
+    [3.3, 'transform:scale(.99);opacity:1'],
+  ]);
+  const titleSub = fadeWindow(1, 3.1, 0.3);
+  const endCard = anim([
+    [0, 'opacity:0'],
+    [22.3, 'opacity:0'],
+    [22.7, 'opacity:1'],
+    [23.6, 'opacity:1'],
+    [24, 'opacity:1'],
+  ]);
+  const css = `${BASE_CSS}
+@keyframes flick{from{transform:scale(1,.97)}to{transform:scale(1.05,1.08)}}
+.stamp{font-size:64px;font-weight:900;text-anchor:middle;stroke:#120a18;stroke-width:3;paint-order:stroke}
+.fail{fill:#ff3b4f}.pass{fill:#58f5a6}
+.capbox{fill:#f4ecd9;stroke:#120a18;stroke-width:3}
+.captext{fill:#120a18;font-size:20px;letter-spacing:.6px}
+.titlecard{fill:#04010a}
+.bigword{fill:#f6e8ff;font-size:112px;font-weight:900;letter-spacing:3px;text-anchor:middle;stroke:#a53dff;stroke-width:9;paint-order:stroke;stroke-linejoin:round}
+.small{fill:#d9a8ff;font-size:23px;letter-spacing:3px;text-anchor:middle}
+.tiny{fill:#a98fc7;font-size:18px;letter-spacing:2px;text-anchor:middle}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.overlay{display:none}}
+`;
+  const body = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="A still puppeteer in a violet aura sends threads to four wooden marionettes. They jerk upright, take tasks from a pile and work. A review fails and then passes, and the work merges one piece at a time.">
+${DEFS}<style>${css}${'__KEYFRAMES__'}</style>
+<g style="${shake}">
+${stage('', speedLines(flashLines))}
+<ellipse class="eyeglow" cx="600" cy="84" rx="22" ry="7" filter="url(#eyeGlow)" style="${eyes}"/>
+<path class="eye" style="${eyes}" d="M581 80L596 87L580 87ZM619 80L604 87L620 87Z"/>
+<g transform="translate(${PILE[0]} ${PILE[1]})"><rect class="card" x="-5" y="-5" width="84" height="48" rx="3" transform="rotate(-4 42 24)"/><rect class="card" x="5" y="4" width="84" height="48" rx="3" transform="rotate(3 42 24)"/><text class="pilelabel" x="44" y="-14">THE PILE</text></g>
+<rect class="slot" x="470" y="598" width="260" height="66" rx="4"/><text class="slottext" x="600" y="590">MAIN</text>
+${PUPPETS.map(thread).join('')}
+${PUPPETS.map(puppet).join('')}
+${card('#3', 8.1, 3, toLead)}${card('#2', 7.7, 1, merge(18.6, 612))}${card('#1', 7.3, 0, merge(17.2, 500))}
+${stamp('FAIL', 'fail', 292, 408, FAIL, PASS - 0.1)}
+${stamp('PASS', 'pass', 292, 408, PASS, 17)}${stamp('PASS', 'pass', 562, 408, PASS + 0.25, 18.3)}
+${caption('The lead stays still. Every teammate is on a string.', 4.1, 7)}
+${caption('Each one takes the next free task from the pile.', 7.2, 12.3)}
+${caption('Whoever wrote it does not review it.', 12.5, 16.9)}
+${caption('Merges land one at a time.', 17.1, 20.8)}
+${caption('When the work is done, the strings come off.', 21, 22.2)}
+</g>
+<g class="overlay" style="${titleCard}"><rect class="titlecard" width="${W}" height="${H}"/>
+<g style="transform-origin:600px 320px;${titleWord}"><text class="bigword" x="600" y="350">PUPPETEERING</text></g>
+<g style="${titleSub}"><text class="small" x="600" y="410">ONE LEAD. MANY AGENTS.</text><text class="tiny" x="600" y="448">CONDITION: EVERY STRING HAS A CHECK</text></g></g>
+<g class="overlay" style="${endCard}"><rect class="titlecard" width="${W}" height="${H}"/><text class="small" x="600" y="345">EVERY STRING ACCOUNTED FOR</text></g>
+</svg>`;
+  return body.replace('__KEYFRAMES__', keyframes.join(''));
+}
+
+function staticPuppet(x, lean) {
+  return `<g transform="translate(${x} 215) rotate(${lean} 0 200)">
+<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+${limb('M-11 172L-16 208L-12 246M11 172L16 208L12 246')}
+${arm(-1, '')}${arm(1, '')}
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g>`;
+}
+
+function buildBanner() {
+  const xs = [70, 205, 995, 1130];
+  const threads = xs
+    .map((x) => {
+      const [hx, hy] = x < 600 ? [462, 152] : [738, 152];
+      return `<path d="M${hx} ${hy}C${(hx + x) / 2} 190 ${x} 195 ${x} 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M${hx} ${hy}C${(hx + x) / 2} 190 ${x} 195 ${x} 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/>`;
+    })
+    .join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} 470" width="${W}" height="470" role="img" aria-label="Puppeteering: a still figure in a violet aura holds four wooden marionettes on strings.">
+${DEFS}<style>${BASE_CSS}.bigword{fill:#f6e8ff;font-size:72px;font-weight:900;letter-spacing:2px;text-anchor:middle;stroke:#a53dff;stroke-width:7;paint-order:stroke;stroke-linejoin:round}.small{fill:#d9a8ff;font-size:21px;letter-spacing:3px;text-anchor:middle}</style>
+<svg viewBox="0 0 ${W} 470" width="${W}" height="470">${stage().replace(/style="[^"]*"/g, '')}
+<ellipse class="eyeglow" cx="600" cy="84" rx="22" ry="7" filter="url(#eyeGlow)"/><path class="eye" d="M581 80L596 87L580 87ZM619 80L604 87L620 87Z"/>
+${threads}${xs.map((x, i) => staticPuppet(x, [-3, 2, -2, 3][i])).join('')}</svg>
+<text class="bigword" x="600" y="360">PUPPETEERING</text>
+<text class="small" x="600" y="408">ONE LEAD. MANY AGENTS. EVERY STRING.</text>
+</svg>`;
+}
+
+for (const [file, svg] of [
+  ['how-it-works.svg', buildAnimated()],
+  ['banner.svg', buildBanner()],
+]) {
+  writeFileSync(join(HERE, file), svg);
+  console.log(`wrote ${file} (${Buffer.byteLength(svg)} bytes)`);
+}

@@ -1,41 +1,69 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-label="Puppeteering: one lead moves a team of Claude Code agents, each on its own string.">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#14101f"/>
-      <stop offset="1" stop-color="#2a1a3d"/>
-    </linearGradient>
-    <linearGradient id="thread" gradientUnits="userSpaceOnUse" x1="0" y1="92" x2="0" y2="262">
-      <stop offset="0" stop-color="#f4a6d7"/>
-      <stop offset="1" stop-color="#8c7bff"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="420" fill="url(#bg)"/>
-  <g fill="none" stroke="url(#thread)" stroke-width="2" stroke-linecap="round">
-    <path d="M600 92 C 500 130, 300 150, 180 262"/>
-    <path d="M600 92 C 540 140, 430 170, 390 262"/>
-    <path d="M600 92 C 600 150, 600 190, 600 262"/>
-    <path d="M600 92 C 660 140, 770 170, 810 262"/>
-    <path d="M600 92 C 700 130, 900 150, 1020 262"/>
-  </g>
-  <g fill="none" stroke="#f4a6d7" stroke-width="6" stroke-linecap="round">
-    <path d="M520 78 H680"/>
-    <path d="M600 42 V112"/>
-  </g>
-  <circle cx="600" cy="78" r="9" fill="#f4a6d7"/>
-  <g fill="#14101f" stroke="#8c7bff" stroke-width="2.5">
-    <rect x="122" y="262" width="116" height="62" rx="14"/>
-    <rect x="332" y="262" width="116" height="62" rx="14"/>
-    <rect x="542" y="262" width="116" height="62" rx="14"/>
-    <rect x="752" y="262" width="116" height="62" rx="14"/>
-    <rect x="962" y="262" width="116" height="62" rx="14"/>
-  </g>
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="#d9d2ff" text-anchor="middle">
-    <text x="180" y="299">builder</text>
-    <text x="390" y="299">builder</text>
-    <text x="600" y="299">reviewer</text>
-    <text x="810" y="299">builder</text>
-    <text x="1020" y="299">researcher</text>
-  </g>
-  <text x="600" y="376" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="40" font-weight="700" fill="#ffffff">Puppeteering</text>
-  <text x="600" y="404" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" fill="#c9bfe8">One lead. Many agents. Every string accounted for.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" role="img" aria-label="Puppeteering: a still figure in a violet aura holds four wooden marionettes on strings.">
+<defs>
+<radialGradient id="sky" cx="50%" cy="18%" r="85%"><stop offset="0" stop-color="#3a1466"/><stop offset=".42" stop-color="#150726"/><stop offset="1" stop-color="#05020a"/></radialGradient>
+<pattern id="tone" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><circle cx="4.5" cy="4.5" r="1.5" fill="#c9a2ff"/></pattern>
+<radialGradient id="toneFade" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".36"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<mask id="toneMask"><rect width="1200" height="675" fill="url(#toneFade)"/></mask>
+<filter id="ragged" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".022 .05" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="46"/><feGaussianBlur stdDeviation="1.6"/></filter>
+<filter id="eyeGlow" x="-100%" y="-300%" width="300%" height="700%"><feGaussianBlur stdDeviation="5"/></filter>
+</defs><style>
+.aura1{fill:#a53dff;opacity:.5}.aura2{fill:#ff4fd8;opacity:.38}
+.robe{fill:#07030d;stroke:#d9a8ff;stroke-width:2.5;stroke-linejoin:round}
+.void{fill:#000}
+.finger{stroke:#d9a8ff;stroke-width:3;stroke-linecap:round;fill:none}
+.eye{fill:#ff8bf0}.eyeglow{fill:#ff4fd8}
+.glow,.line,.string,.bar{fill:none;stroke-linecap:round}
+.glow{stroke-width:8;stroke-dasharray:1}
+.line{stroke-width:1.8;stroke-dasharray:1}
+.glow,.line{stroke:inherit}
+.string{stroke:#f6ddff;stroke-width:1.3}
+.bar{stroke:#d9c6a2;stroke-width:6}
+.wood{fill:#d8c39b;stroke:#120a18;stroke-width:3;stroke-linejoin:round}
+.limb{fill:none;stroke:#120a18;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.limbwood{fill:none;stroke:#d8c39b;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.joint{fill:#6d3fb0;stroke:#120a18;stroke-width:2}
+.seam{stroke:#8d7650;stroke-width:1.5;fill:none}
+.hollow{fill:#120a18}
+text{font-family:Impact,'Arial Black','Helvetica Neue',Arial,sans-serif}
+.tag{fill:#e8d8ff;font-size:17px;letter-spacing:3px;text-anchor:middle}
+.card{fill:#f4ecd9;stroke:#120a18;stroke-width:3}
+.cardtext{fill:#120a18;font-size:22px;text-anchor:middle}
+.slot{fill:#0c0614;stroke:#d9a8ff;stroke-width:2.5}
+.slottext{fill:#d9a8ff;font-size:18px;letter-spacing:5px;text-anchor:middle}
+.pilelabel{fill:#e8d8ff;font-size:15px;letter-spacing:3px;text-anchor:middle}
+.tone{fill:url(#tone)}
+.speed{fill:#f6e8ff}
+.bigword{fill:#f6e8ff;font-size:72px;font-weight:900;letter-spacing:2px;text-anchor:middle;stroke:#a53dff;stroke-width:7;paint-order:stroke;stroke-linejoin:round}.small{fill:#d9a8ff;font-size:21px;letter-spacing:3px;text-anchor:middle}</style>
+<svg viewBox="0 0 1200 470" width="1200" height="470"><rect x="-40" y="-40" width="1280" height="755" fill="url(#sky)"/>
+<rect class="tone" width="1200" height="675" mask="url(#toneMask)"/>
+<g filter="url(#ragged)">
+<path class="aura1"  d="M600 -30C520 20 560 60 490 70C430 90 400 170 440 240C510 290 690 290 760 240C800 170 770 90 710 70C640 60 680 20 600 -30Z"/>
+<path class="aura2"  d="M600 -5C540 40 570 70 525 85C480 105 465 175 490 225C540 265 660 265 710 225C735 175 720 105 675 85C630 70 660 40 600 -5Z"/>
+</g><path class="robe" d="M600 34C566 34 548 66 552 104C520 112 492 128 462 146L470 160C505 150 530 146 548 150C540 185 520 215 505 232L560 222L582 240L604 224L628 242L646 222L695 232C680 215 660 185 652 150C670 146 695 150 730 160L738 146C708 128 680 112 648 104C652 66 634 34 600 34Z"/>
+<ellipse class="void" cx="600" cy="84" rx="27" ry="32"/>
+<path class="finger" d="M462 152L448 140M462 152L444 148M462 152L444 156M462 152L448 165M738 152L752 140M738 152L756 148M738 152L756 156M738 152L752 165"/>
+<ellipse class="eyeglow" cx="600" cy="84" rx="22" ry="7" filter="url(#eyeGlow)"/><path class="eye" d="M581 80L596 87L580 87ZM619 80L604 87L620 87Z"/>
+<path d="M462 152C266 190 70 195 70 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M462 152C266 190 70 195 70 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/><path d="M462 152C333.5 190 205 195 205 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M462 152C333.5 190 205 195 205 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/><path d="M738 152C866.5 190 995 195 995 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M738 152C866.5 190 995 195 995 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/><path d="M738 152C934 190 1130 195 1130 215" fill="none" stroke="#f6ddff" stroke-width="2"/><path d="M738 152C934 190 1130 195 1130 215" fill="none" stroke="#f6ddff" stroke-width="7" opacity=".3"/><g transform="translate(70 215) rotate(-3 0 200)">
+<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+<path class="limb" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/><path class="limbwood" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/>
+<g><path class="limb" d="M-25 114L-40 148L-31 182"/><path class="limbwood" d="M-25 114L-40 148L-31 182"/><circle class="joint" cx="-25" cy="114" r="5"/><circle class="joint" cx="-40" cy="148" r="4"/></g><g><path class="limb" d="M25 114L40 148L31 182"/><path class="limbwood" d="M25 114L40 148L31 182"/><circle class="joint" cx="25" cy="114" r="5"/><circle class="joint" cx="40" cy="148" r="4"/></g>
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g><g transform="translate(205 215) rotate(2 0 200)">
+<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+<path class="limb" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/><path class="limbwood" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/>
+<g><path class="limb" d="M-25 114L-40 148L-31 182"/><path class="limbwood" d="M-25 114L-40 148L-31 182"/><circle class="joint" cx="-25" cy="114" r="5"/><circle class="joint" cx="-40" cy="148" r="4"/></g><g><path class="limb" d="M25 114L40 148L31 182"/><path class="limbwood" d="M25 114L40 148L31 182"/><circle class="joint" cx="25" cy="114" r="5"/><circle class="joint" cx="40" cy="148" r="4"/></g>
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g><g transform="translate(995 215) rotate(-2 0 200)">
+<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+<path class="limb" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/><path class="limbwood" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/>
+<g><path class="limb" d="M-25 114L-40 148L-31 182"/><path class="limbwood" d="M-25 114L-40 148L-31 182"/><circle class="joint" cx="-25" cy="114" r="5"/><circle class="joint" cx="-40" cy="148" r="4"/></g><g><path class="limb" d="M25 114L40 148L31 182"/><path class="limbwood" d="M25 114L40 148L31 182"/><circle class="joint" cx="25" cy="114" r="5"/><circle class="joint" cx="40" cy="148" r="4"/></g>
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g><g transform="translate(1130 215) rotate(3 0 200)">
+<path class="string" d="M-25 0V114M25 0V114M0 0V62"/><path class="bar" d="M-34 0H34"/>
+<path class="wood" d="M-25 110C-12 102 12 102 25 110L17 172H-17Z"/>
+<path class="limb" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/><path class="limbwood" d="M-11 172L-16 208L-12 246M11 172L16 208L12 246"/>
+<g><path class="limb" d="M-25 114L-40 148L-31 182"/><path class="limbwood" d="M-25 114L-40 148L-31 182"/><circle class="joint" cx="-25" cy="114" r="5"/><circle class="joint" cx="-40" cy="148" r="4"/></g><g><path class="limb" d="M25 114L40 148L31 182"/><path class="limbwood" d="M25 114L40 148L31 182"/><circle class="joint" cx="25" cy="114" r="5"/><circle class="joint" cx="40" cy="148" r="4"/></g>
+<circle class="wood" cy="82" r="22"/><path class="seam" d="M0 60V104"/><circle class="hollow" cx="-8" cy="80" r="4.5"/><circle class="hollow" cx="8" cy="80" r="4.5"/></g></svg>
+<text class="bigword" x="600" y="360">PUPPETEERING</text>
+<text class="small" x="600" y="408">ONE LEAD. MANY AGENTS. EVERY STRING.</text>
 </svg>

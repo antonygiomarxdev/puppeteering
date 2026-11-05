@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Puppeteering: one lead moves a team of Claude Code agents, each on its own string." width="100%">
+  <img src="assets/banner.svg" alt="Puppeteering: a still figure in a violet aura holds four wooden marionettes on strings." width="100%">
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 ---
 
 <p align="center">
-  <img src="assets/how-it-works.svg" alt="Animation: the lead writes tasks, teammates claim them, a review fails and then passes, blocked tasks unlock, and merges land one at a time." width="100%">
+  <img src="assets/how-it-works.svg" alt="Animation: a still puppeteer sends threads to four wooden marionettes. They jerk upright, take tasks from a pile and work. A review fails and then passes, and the work merges one piece at a time." width="100%">
 </p>
 
 ## Why this exists
@@ -77,7 +77,7 @@ Run it on your own project and tell us what happened: that is the most useful th
 
 Puppeteering is one of Neferpitou's Nen abilities in *Hunter x Hunter*: moving many bodies at once. This project is an unofficial, independent guide. It is not affiliated with Anthropic, or with the creators of *Hunter x Hunter*. The artwork here is original.
 
-The animation's idea of showing a team as a live panel was inspired by [a post by @hayatomaruu](https://x.com/hayatomaruu/status/2117739581625802835). The artwork is our own.
+The idea of animating a team at work came from [a post by @hayatomaruu](https://x.com/hayatomaruu/status/2117739581625802835). The artwork is our own, and shows no character from the series.
 
 ## License
 

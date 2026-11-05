@@ -114,6 +114,7 @@ Token use grows with each active teammate; the [costs page](https://code.claude.
 
 - Keep teams small and spawn prompts focused. Shut a teammate down when its work is done.
 - A teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
+- The built-in `Explore` runs on your session's model. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
 - `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.
 
 ## Safety
