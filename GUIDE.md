@@ -113,6 +113,11 @@ Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 line
 Token use grows with each active teammate; the [costs page](https://code.claude.com/docs/en/costs) says about 7 times a normal session when teammates run in plan mode.
 
 - Keep teams small and spawn prompts focused. Shut a teammate down when its work is done.
+- A teammate that stops already delivers its final answer to the lead. Have it report only there, and message the lead only when blocked: every message wakes the lead, and every wake re-reads the lead's whole conversation.
+- Wait on several CI runs with one watcher, not one each, and do not answer a notice that needs nothing.
+- A teammate runs commands in the foreground: its background command does not wake it, and it sits idle with the work unfinished. Idle with no final report means stalled, so read the agent list before you say who is working.
+- If a reviewed pull request falls behind, merge the base into it rather than rebasing, when your merge check keeps a review across merge commits. Then only CI runs again, and the reviewer sleeps.
+- A lead's context outweighs its duplicates. Keep state in files and an issue tracker, and start a new session at a natural stop: `/clear` costs nothing.
 - A teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
 - The built-in `Explore` runs on your session's model. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
 - `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.

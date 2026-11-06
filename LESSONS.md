@@ -31,3 +31,11 @@ The lead wrote each brief by hand and started a track only when another ended. R
 ## 2026-11: a document said the opposite of the goal
 
 The team's own document said one team means one pull request at a time, so the lead worked in series while builders were already working in other worktrees. A rule that describes the first days of a tool goes stale. Re-measure it when the way of working changes.
+
+## 2026-11: the same report arrived twice
+
+Builders sent their report with a message and then stopped, and stopping delivers the final answer too, so the lead woke twice for one report. An instruction sent to a working teammate crossed with its report the same way. In one conversation 143 wake-ups and 791 requests carried about 464 thousand cached tokens each. The duplicates were about 6% by estimate; the size of the conversation was the larger cost. Only the conversation's own requests were counted, not the teammates'.
+
+## 2026-11: reported as working, sitting idle
+
+Five builders had started background commands and gone idle waiting for a notice that does not come for a teammate. The lead told the owner they were working for about an hour, until the owner asked where things stood and the agent list showed otherwise. In the same days, each merge sent every other pull request back for a rebase and a new review, though the merge check already accepted a merge of the base without one.
