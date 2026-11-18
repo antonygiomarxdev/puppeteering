@@ -4,6 +4,9 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 
 ## Unreleased
 
+### Added
+- `office-app/tools/demo-video/record.mjs`: records a scripted 31 s demo of the office to MP4, landscape and square, with `--theme=`.
+
 ## 0.2.0
 
 The office becomes an app: Phaser 3, React and Vite in `office-app/`, built to the single page `office/index.html`.

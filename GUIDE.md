@@ -66,6 +66,7 @@ Status: run with one researcher, one builder and one reviewer, each given no tas
 
 ## Files and worktrees
 
+A teammate never kills a process by name (`taskkill /IM`, `pkill`, `killall`): that closes the owner's own windows too. It kills only the PID it started, or one whose command line holds its own profile or temp folder.
 Two teammates editing one file overwrite each other, and teams do not isolate teammates. So every task names a set of files that does not overlap with another running task. A hand mutant counts as an edit: a reviewer mutates a copy of the code, not the live file, unless no other task writes there.
 
 *This guide's practice, not the docs':* for several branches at once, create one sibling worktree per stream with `git worktree add`, and name it by absolute path in the task. Passing `isolation` on the Agent call would make it a subagent, not a teammate. Install dependencies in each worktree, because a fresh checkout has none.
