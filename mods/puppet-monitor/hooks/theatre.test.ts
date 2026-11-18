@@ -278,3 +278,16 @@ test('a turn that ends with a script still running closes it, so it never reads 
   expect(closed.loops.lead.running).toEqual([])
   expect(closed.timelines?.lead?.[0]).toMatchObject({ end: 6, ok: false })
 })
+
+test('a script call seen twice is nested once', () => {
+  const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
+  let board = startCall(base, 'lead', { id: 'r', tool: 'REPL', doing: 'Code: script', startedAt: 1, kind: 'code' })
+  board = startCall(board, 'lead', { id: 'repl_54f5', tool: 'Read', doing: 'Read: a.md', startedAt: 2, kind: 'read' })
+  board = startCall(board, 'lead', { id: 'repl_54f5', tool: 'Read', doing: 'Read: a.md', startedAt: 3, kind: 'read' })
+  expect(board.loops.lead.running.find(call => call.id === 'r')?.inner).toBe(1)
+  board = endCall(board, 'lead', 'repl_54f5', 4, true)
+  board = endCall(board, 'lead', 'r', 5, true)
+  const entry = board.timelines?.lead?.[0]
+  expect(entry).toMatchObject({ what: 'Code: 1 calls' })
+  expect(entry?.type === 'call' && entry.inner).toHaveLength(1)
+})

@@ -113,6 +113,8 @@ export function dropScripts(board: Board, id: string, at: number): Board {
 export function startCall(board: Board, id: string, call: Running & { tool: string }): Board {
   const loop = board.loops[id] ?? { running: [], lastAt: call.startedAt, said: [] }
   const script = call.kind === 'code' ? undefined : loop.running.find(known => known.kind === 'code')
+  // tool.call can fire twice for one call in Code Mode: a call already nested under the script is not nested again.
+  if (script && (board.timelines?.[id] ?? []).some(entry => entry.type === 'call' && entry.id === script.id && entry.inner?.some(inner => inner.id === call.id))) return board
   const running = loop.running.map(known => (known === script ? { ...known, inner: (known.inner ?? 0) + 1 } : known))
   const moved = { ...board, loops: { ...board.loops, [id]: { ...loop, running: [...running, call] } } }
   if (!script) return push(moved, id, { type: 'call', at: call.startedAt, id: call.id, tool: call.tool, kind: call.kind, what: call.doing })
