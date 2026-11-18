@@ -150,7 +150,7 @@ function leave(L, r) {
 function routeToLead(L, r, i) {
   const d = deskOf(L.lead, LEAD_W)
   // Beside the lead's desk, to its left, so the two bubbles do not cover each other.
-  const spot = { x: d.x - CW - 6 - (i % 3) * 12, y: d.y + 12 }
+  const spot = { x: d.x - CW - 6 - (i % 3) * (CW + 4), y: d.y + 12 + (i % 2) * 18 }
   const door = { x: L.lead.x + Math.floor(LEAD_W / 2) * T + T / 2 - CW / 2, y: L.lead.y + 6 }
   return [...leave(L, r), { x: door.x, y: hallOf(L) }, door, { x: spot.x, y: L.lead.y + 2 * T + 10 }, spot]
 }
@@ -240,7 +240,7 @@ function frame(now) {
     critter(p.x, p.y, p.color, p.mode, moving ? tick : 0, p.facing, p.lead)
     const alert = p.lead ? state.lead.alert : p.a.alert
     if (alert && tick % 2) { px(p.x + CW / 2 - 1, p.y - CH - 14, 3, 7, '#ff5a5a'); px(p.x + CW / 2 - 1, p.y - CH - 5, 3, 3, '#ff5a5a') }
-    if (p.mode === 'talk') bubble(p.x + CW / 2, p.y - CH - 4, p.text, scale)
+    if (p.mode === 'talk') bubble(p.x + CW / 2, p.y - CH - 4 - (agents.indexOf(p.a) % 2) * 26, p.text, scale)
   } })
   things.sort((p, q) => p.y - q.y).forEach(t => t.draw())
 
