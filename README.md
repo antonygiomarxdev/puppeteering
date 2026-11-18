@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>A field guide to running a team of Claude Code agents on real work.</strong><br>
-  One lead. A shared pile of tasks. Independent review. Every claim backed by a check.
+  One coordinator per goal, in its own worktree. A shared pile of tasks. Independent review. Every claim backed by a check.
 </p>
 
 <p align="center">
@@ -54,7 +54,7 @@ A project's own document holds only what is specific to it.
 
 ## The idea in five rules
 
-1. **A pile, not a chain of orders.** The lead writes tasks with their dependencies; teammates take the next free one.
+1. **One coordinator per goal.** Each goal gets its own lead in its own worktree, and that lead finishes it. Inside, a pile, not a chain of orders: the lead writes tasks with their dependencies; teammates take the next free one.
 2. **Parallel by default, serial where it has to be.** Writing and reviewing scale. Your attention and your merges do not.
 3. **A report is a claim.** Read the command and its output, then run the check again.
 4. **Whoever wrote it does not review it.** A session that did not watch the code being written is not swayed by the reasoning behind it.
