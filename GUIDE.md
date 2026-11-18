@@ -65,7 +65,7 @@ The lead fills the shared task list. Teammates take the next free task.
 - **A teammate that creates a file stops if it already exists.** *Observed:* a Write result that says "updated", not "created", meant another teammate wrote there first.
 - **One file per task and no messages between workers?** Fix each agent's file in its prompt and skip the shared list: a Workflow ran that way with no collisions.
 
-Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Several of one role taking the lowest free task collided three times in one run, and the second write replaced the first; assigned by name in the spawn prompt, the next run wrote 24 files with none ([#5](https://github.com/antonygiomarxdev/puppeteering/issues/5)). Not yet known: whether claiming with `TaskUpdate` is atomic. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
+Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Several of one role taking the lowest free task collided three times in one run, and the second write replaced the first; assigned by name in the spawn prompt, the next run wrote 24 files with none ([#5](https://github.com/antonygiomarxdev/puppeteering/issues/5)). Claiming [uses file locking](https://code.claude.com/docs/en/agent-teams#assign-and-claim-tasks), and the list kept one owner, so the loser wrote anyway: a teammate writes only after `TaskGet` shows it as the owner. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
 
 ## Files and worktrees
 
