@@ -6,7 +6,9 @@ Newest first. Each one is something a real run showed. A rule in the guide chang
 
 In a Claude desktop (Code tab) session with both team variables set, the lead had TaskCreate, TaskList and TaskUpdate, and filled the pile. Its four teammates, spawned with the Agent tool and a `name`, had none of them. One found the tasks by reading `~/.claude/tasks/<session>/*.json`, picked the lowest free "Researcher." task, and was refused by the permission classifier when it tried to mark it. It finished as a subagent and handed back.
 
-Open: whether the app spawns named agents as teammates at all, or as subagents. Until that is known, in that app the lead marks every task itself and assigns the next task by message ("new task N, not task M again").
+With no way to claim, two researchers both took task 1 and wrote the same file, minutes apart; the second write won. Two others edited task JSON files on disk before the lead's message arrived, then reverted. `SendMessage` to `team-lead` failed ("not reachable"); the agents reached the lead as `main`.
+
+Answer: the docs do not say. The agent-teams page covers terminals only, and the desktop page does not mention teams. The run itself showed subagents with message access, not teammates. The guide now has a section for the app: [`GUIDE.md`](GUIDE.md#in-the-desktop-app). In that app the lead marks every task itself and assigns the next task by message ("new task N, not task M again").
 
 ## 2026-11: CRLF files defeat patch scripts
 

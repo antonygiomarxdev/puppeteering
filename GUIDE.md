@@ -16,6 +16,7 @@ What running [Claude Code agent teams](https://code.claude.com/docs/en/agent-tea
 - [Cost](#cost)
 - [Safety](#safety)
 - [Status](#status)
+- [In the desktop app](#in-the-desktop-app)
 - [Known limits](#known-limits)
 
 ## Should you use a team?
@@ -130,6 +131,20 @@ Token use grows with each active teammate; the [costs page](https://code.claude.
 Before telling anyone where things stand, list the agents and read the last comment of each open pull request. A teammate's message can arrive late, in a batch.
 
 Say plainly when the process is not what the documents say.
+
+## In the desktop app
+
+Not docs: the Claude desktop app (Code tab) ran named agents as subagents, not as teammates. One Windows 11 run showed it (see [`LESSONS.md`](LESSONS.md)). The lead had the Task tools. The agents had none, could not claim, and reached the lead as `main`, not `team-lead`.
+
+What the docs say: the agent-teams page describes in-process teammates and split panes in a terminal, and never names the desktop app. The desktop page never mentions agent teams or teammates; it lists a subagent pane. So the docs do not say whether the app supports teams. They say only that a subagent has the Task tools "only when your session has them", and that without them "an agent coordinates with its team through messages instead of the shared task list". The subagents page says that "in an interactive session with agent teams enabled", a subagent spawned with a `name` "launches as a teammate instead"; the app run did not match that, and the docs do not say why.
+
+So in the app, work as if you have subagents:
+
+- The lead owns the task list and marks every task itself, when the agent hands back.
+- The lead assigns by message, and names the task: "new task N, not task M again".
+- Each agent gets its own files, so two never write the same one. Nobody claims, so nothing else stops them.
+- Run `TaskList` as the first call in an agent. If it fails, the agent has no task tools: it reports by message and does not edit `~/.claude/tasks`.
+- For a real team with a shared list, use the terminal.
 
 ## Known limits
 
