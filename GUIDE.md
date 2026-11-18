@@ -63,7 +63,9 @@ The lead fills the shared task list. Teammates take the next free task.
 - **Give the lead's own tasks an owner**, or a teammate can claim them. Writing them down lets you see the whole queue with `Ctrl+T`.
 - **Name a role in the description**, such as "Builder." or "Reviewer.", and spawn each teammate with one instruction: take the lowest free task for your role.
 
-Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Not yet run: several teammates of one role competing for tasks. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
+- **Set the owner before the work starts.** The lead sets it before pointing anyone at a task, and a teammate sets it before its first edit. With several teammates of one role, a task with an empty owner gets built twice.
+
+Status: run with one researcher, one builder and one reviewer, and then with three builders and one reviewer on one pile. With three builders, a task was built twice three times when the owner was set late; see [`LESSONS.md`](LESSONS.md). The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
 
 ## Files and worktrees
 
