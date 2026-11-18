@@ -66,3 +66,13 @@ The lead wrote each brief by hand and started a track only when another ended. R
 ## 2026-11: a document said the opposite of the goal
 
 The team's own document said one team means one pull request at a time, so the lead worked in series while builders were already working in other worktrees. A rule that describes the first days of a tool goes stale. Re-measure it when the way of working changes.
+
+## 2026-11: several builders of one role duplicate work
+
+First run with three builders and one reviewer on one pile of about 40 tasks, with stacked pull requests. Three times, two builders built the same task: twice the lead pointed a builder at a task whose owner field was still empty while another builder had already started it, and once a builder saw a task as unowned although the lead had set an owner. Each time a full task's work was thrown away.
+
+Changed: the lead sets the owner on a task before pointing anyone at it, and a builder sets the owner before it writes a line. A builder that finds a branch for the task already in another worktree asks before it builds.
+
+Learned: "take the lowest free task" is not enough once the lead also assigns by hand. One of the two must own assignment. Messages also cross: a teammate's report often predates the lead's last message, so the lead must read the timestamp before acting on it.
+
+Also seen: the reviewer's hand mutants found real defects that all checks had passed (a lease that could not be taken after release, a supervisor that waited forever on stop, a foreign key that made a replace impossible to save, a trigger that a NULL let through). Running the architecture test on each branch merged with main found two specs that asked the domain to import a port.
