@@ -18,6 +18,8 @@ const phaseOf = (h = new Date().getHours()) => (h >= 7 && h < 17 ? 'day' : h >= 
 
 // Frames of the tileset spritesheet.
 const T = { wall: 8, wallTop: 9, wallBase: 10, wallShadow: 11, grass: 12, tufts: 13 }
+/** Clicking a critter emits this with its id (null: nobody); the HUD emits and listens to it too. */
+export const SELECT_EVENT = 'select-agent'
 const HEAD = 28 // feet to the top of the head, in art pixels
 
 type Actor = {
@@ -59,6 +61,8 @@ export class OfficeScene extends Phaser.Scene {
   private actors = new Map<string, Actor>()
   private lead?: Actor
   private labels!: Labels
+  private selected: string | null = null
+  private ring!: Phaser.GameObjects.Ellipse
 
   constructor() { super('office') }
 
@@ -71,9 +75,14 @@ export class OfficeScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(BG)
     this.labels = new Labels(this.game.canvas.parentElement!)
     const on = (s: OfficeState) => { this.state = s }
+    const pick = (id: string | null) => { this.selected = id }
     EventBus.on(STATE_EVENT, on)
+    EventBus.on(SELECT_EVENT, pick)
+    this.ring = this.add.ellipse(0, 0, 36, 10).setStrokeStyle(2, 0x4a90d9).setVisible(false)
+    // A click on empty floor clears the selection.
+    this.input.on('pointerdown', (_p: unknown, over: unknown[]) => { if (!over.length) EventBus.emit(SELECT_EVENT, null) })
     this.scale.on('resize', () => this.fit())
-    const done = () => { EventBus.off(STATE_EVENT, on); this.labels.destroy() }
+    const done = () => { EventBus.off(STATE_EVENT, on); EventBus.off(SELECT_EVENT, pick); this.labels.destroy() }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, done)
     this.events.once(Phaser.Scenes.Events.DESTROY, done)
   }
@@ -255,6 +264,7 @@ export class OfficeScene extends Phaser.Scene {
         actor = this.actor(shiny ? 'critter-gold' : 'critter')
         if (!shiny) actor.sprite.setTint(tintOf(a.name))
         this.actors.set(a.id, actor)
+        actor.sprite.setInteractive({ useHandCursor: true }).on('pointerdown', () => EventBus.emit(SELECT_EVENT, a.id))
         if (actor.shiny) this.burst(w.x, w.y)
       }
       const typing = a.working && !a.alert && !w.asleep && w.mode === 'sit'
@@ -271,6 +281,11 @@ export class OfficeScene extends Phaser.Scene {
       const anchor = { id: a.id, x: pos.x, y: pos.y }
       marks.push({ ...anchor, pill: this.pillOf(a, w, live.has(a.id)), bubble: w.mode === 'talk' ? w.text : undefined })
     })
+
+    // The selection ring rides under the selected critter, and drops if that agent is gone.
+    const sel = this.selected ? this.walkers.all.get(this.selected) : undefined
+    this.ring.setVisible(Boolean(sel && this.known.has(this.selected!)))
+    if (sel) this.ring.setPosition(sel.x, sel.y - 1).setDepth(sel.y - 0.6)
 
     // The lead sits at the meeting zone's desk.
     const seat = leadSeat(this.L)

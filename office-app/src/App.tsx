@@ -4,6 +4,7 @@ import { startPolling } from './state'
 import { startGame } from './game'
 import type { OfficeState } from './types'
 import { Header, History } from './hud/Hud'
+import { Team } from './hud/Team'
 import './hud/hud.css'
 
 export function App() {
@@ -23,7 +24,10 @@ export function App() {
       <Header state={state} info={info} />
       <main>
         <div id="stage" />
-        <History events={state?.history ?? []} />
+        <div className="side">
+          <Team state={state} />
+          <History events={state?.history ?? []} />
+        </div>
       </main>
     </div>
   )

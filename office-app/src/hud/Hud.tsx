@@ -18,8 +18,8 @@ export function Header({ state, info }: { state: OfficeState | null; info: strin
 
 export function History({ events }: { events: HistoryEvent[] }) {
   return (
-    <aside className="history">
-      <h2>History</h2>
+    <details className="history" open>
+      <summary>History</summary>
       {events.length === 0 ? (
         <p className="empty">No task events yet.</p>
       ) : (
@@ -32,6 +32,6 @@ export function History({ events }: { events: HistoryEvent[] }) {
           ))}
         </ul>
       )}
-    </aside>
+    </details>
   )
 }
