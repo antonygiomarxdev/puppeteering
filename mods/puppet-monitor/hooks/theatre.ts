@@ -1,8 +1,10 @@
 // What the board means, and how it is drawn: plain functions, no engine.
-import type { Agent, Board, Event, Loop, Report, Task } from '../types'
+import type { Agent, Board, Departed, Event, Loop, Report, Task, ToolKind } from '../types'
 
 export const LEAD = 'lead'
 export const HISTORY_KEPT = 200
+// How long an agent that left stays on the floor, so the office can play the leave.
+export const GONE_MS = 60_000
 const HISTORY_SHOWN = 50
 // A working agent with no activity for this long is flagged. It may be thinking: the flag says quiet.
 const QUIET_MS = 120_000
@@ -98,6 +100,35 @@ export function alertOf(loop: Loop | undefined, now: number): Alert | undefined 
 }
 
 export const isWorking = (status: string) => status === 'running' || status === 'pending'
+
+const KIND_OF: Record<string, ToolKind> = {
+  Edit: 'write', Write: 'write', NotebookEdit: 'write',
+  Read: 'read', Grep: 'read', Glob: 'read', LSP: 'read',
+  Bash: 'shell', Monitor: 'shell', PowerShell: 'shell',
+  WebFetch: 'web', WebSearch: 'web',
+  SendMessage: 'message',
+  TaskCreate: 'board', TaskUpdate: 'board', TaskList: 'board', TaskGet: 'board',
+  Agent: 'agent',
+}
+
+/** What a tool call does, by its name: the office draws the costume and prop from it. */
+export function kindOf(tool: string): ToolKind {
+  if (tool.startsWith('mcp__claude-in-chrome__')) return 'web'
+  return KIND_OF[tool] ?? 'other'
+}
+
+/** The first line of why a call failed, or undefined when it worked. */
+export function errorOf(ran: { isError?: boolean; text?: string; deny?: string }): string | undefined {
+  if (ran.deny !== undefined) return ran.deny.split('\n')[0]
+  return ran.isError ? (ran.text ?? 'failed').split('\n')[0] : undefined
+}
+
+/** Who left since the last look, kept GONE_MS from the moment they left. */
+export function departures(state: Pick<Board, 'agents' | 'departed'>, listed: Agent[], now: number): Departed[] {
+  const here = new Set(listed.map(agent => agent.id))
+  const kept = (state.departed ?? []).filter(agent => !here.has(agent.id) && now - agent.left <= GONE_MS)
+  return [...kept, ...state.agents.filter(agent => !here.has(agent.id)).map(agent => ({ ...agent, left: now }))]
+}
 
 /** Every alert now up, as words for the status line. */
 export function alerts(board: Board): string[] {
@@ -336,6 +367,9 @@ function footerLines(board: Board, cols: number): Line[] {
 export type Desk = {
   id: string
   name: string
+  /** The agent type it was spawned as, and its description. */
+  type: string
+  description: string
   status: string
   working: boolean
   /** No task in progress and no alert: the office draws it asleep. */
@@ -345,6 +379,39 @@ export type Desk = {
   said?: string
   doing: string
   report?: Report
+  /** The current call's kind, and when it started. Undefined between calls. */
+  kind?: ToolKind
+  since?: number
+  lastError?: { at: number; text: string }
+  /** Open tasks that block this agent's task. */
+  blockedBy?: string[]
+  /** Left the team within the last minute. */
+  gone?: boolean
+}
+
+function deskOf(board: Board, agent: Agent, gone: boolean): Desk {
+  const view = viewOf(board, agent)
+  const call = view.loop?.running.at(-1)
+  const blockedBy = view.task?.blockedBy.filter(id => board.tasks.some(known => known.id === id && known.status !== 'completed')) ?? []
+  return {
+    id: agent.id,
+    name: agent.name,
+    type: agent.type ?? '',
+    description: agent.description,
+    status: agent.status,
+    working: gone ? false : view.working,
+    sleeping: gone || (!view.task && !view.alert),
+    alert: gone ? undefined : view.alert,
+    task: view.task && `#${view.task.id} ${view.task.subject}`,
+    said: view.loop?.said.at(-1),
+    doing: doingOf(view, board.now),
+    report: board.reports[agent.id],
+    kind: call?.kind,
+    since: call?.startedAt,
+    lastError: view.loop?.lastError,
+    blockedBy: blockedBy.length > 0 ? blockedBy : undefined,
+    gone: gone || undefined,
+  }
 }
 
 // The project is the directory the session runs in: the office names it, so a page is not mistaken for another project's.
@@ -360,23 +427,13 @@ export function office(board: Board, cwd = '') {
       alert: board.isLeadBusy ? alertOf(lead, board.now) : undefined,
       said: lead?.said.at(-1),
       doing: call ? `${call.doing} ${elapsed(board.now - call.startedAt)}` : '',
+      kind: call?.kind,
       task: leadTask && `#${leadTask.id} ${leadTask.subject}`,
     },
-    agents: board.agents.map((agent): Desk => {
-      const view = viewOf(board, agent)
-      return {
-        id: agent.id,
-        name: agent.name,
-        status: agent.status,
-        working: view.working,
-        sleeping: !view.task && !view.alert,
-        alert: view.alert,
-        task: view.task && `#${view.task.id} ${view.task.subject}`,
-        said: view.loop?.said.at(-1),
-        doing: doingOf(view, board.now),
-        report: board.reports[agent.id],
-      }
-    }),
+    agents: [
+      ...board.agents.map(agent => deskOf(board, agent, false)),
+      ...(board.departed ?? []).map(agent => deskOf(board, agent, true)),
+    ],
     tasks: { done: board.tasks.filter(task => task.status === 'completed').length, total: board.tasks.length },
     // The queue on the wall: every task, and who took it, by the name the office shows.
     board: board.tasks.map(task => {

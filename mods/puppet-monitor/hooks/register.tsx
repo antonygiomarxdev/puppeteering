@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, draw, historyOf, moveTask, office, remember, sentences, shellEnd, signature, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, departures, draw, errorOf, historyOf, kindOf, moveTask, office, remember, sentences, shellEnd, signature, summarize } from './theatre'
 import type { Tone } from './theatre'
 
 const PANE = 'puppet-monitor'
@@ -13,7 +13,7 @@ const NARRATE = '\n\nBefore each tool call, write one short sentence saying what
 const EMPTY: Board = { loops: {}, reports: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
 
 // Change the tag when a field changes: it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-4' })
+const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-5' })
 
 const loopOf = (state: Board, id: string, now: number): Loop => state.loops[id] ?? { running: [], lastAt: now, said: [] }
 
@@ -99,16 +99,18 @@ export const register: Register = on => {
     await $.command.register({ name: 'office', description: 'Open the office: each agent at its desk, in the browser' })
     $.clock.every(TICK_MS, async () => {
       const now = await $.clock.now()
-      const agents = await $.agent.list()
+      const agents = (await $.agent.list()).map(agent => ({
+        id: agent.id,
+        name: agent.name ?? agent.description ?? agent.type,
+        description: agent.description ?? agent.type,
+        status: agent.status,
+        type: agent.type,
+      }))
       await update($, board, state => ({
         ...state,
         now,
-        agents: agents.map(agent => ({
-          id: agent.id,
-          name: agent.name ?? agent.description ?? agent.type,
-          description: agent.description ?? agent.type,
-          status: agent.status,
-        })),
+        agents,
+        departed: departures(state, agents, now),
       }))
       const state = await read($, board)
       const up = alerts(state)
@@ -251,7 +253,7 @@ export const register: Register = on => {
           [id]: {
             ...loop,
             lastAt: startedAt,
-            running: [...loop.running, { id: e.tool_use_id, doing, startedAt }],
+            running: [...loop.running, { id: e.tool_use_id, doing, startedAt, kind: kindOf(e.tool) }],
             repeat: { sig, count: loop.repeat?.sig === sig ? loop.repeat.count + 1 : 1 },
           },
         },
@@ -286,12 +288,16 @@ export const register: Register = on => {
         events.push(...historyOf(state.tasks, tasks, at, e.tool === 'TaskList' ? undefined : id))
         const history = events.length > 0 ? [...state.history, ...events].slice(-HISTORY_KEPT) : state.history
         if (e.tool === 'Bash' && result?.backgroundTaskId) {
-          shells = [...shells, { id: result.backgroundTaskId, doing, who, startedAt }].slice(-20)
+          shells = [...shells, { id: result.backgroundTaskId, doing, who, startedAt, loop: id }].slice(-20)
         }
         if (e.tool === 'TaskStop' && result?.task_id) {
           shells = shells.map(shell => (shell.id === result.task_id ? { ...shell, ended: 'stopped' } : shell))
         }
-        return { ...state, tasks, shells, history }
+        // A failed call sets the error; the next call that works clears it.
+        const failed = errorOf(ran as { isError?: boolean; text?: string; deny?: string })
+        const loop = loopOf(state, id, at)
+        const loops = { ...state.loops, [id]: { ...loop, lastError: failed === undefined ? undefined : { at, text: failed } } }
+        return { ...state, tasks, shells, history, loops }
       })
       return ran
     } finally {
@@ -314,10 +320,19 @@ export const register: Register = on => {
   on('session.append', async ($, e, next) => {
     const ended = shellEnd(e.message?.content)
     if (ended) {
-      await update($, board, state => ({
-        ...state,
-        shells: state.shells.map(shell => (shell.id === ended.id ? { ...shell, ended: ended.status } : shell)),
-      }))
+      const at = await $.clock.now()
+      await update($, board, state => {
+        const shell = state.shells.find(known => known.id === ended.id)
+        // A shell that failed sets its starter's error, as a failed call would.
+        const loops = shell?.loop && ended.status === 'failed'
+          ? { ...state.loops, [shell.loop]: { ...loopOf(state, shell.loop, at), lastError: { at, text: `${shell.doing} failed` } } }
+          : state.loops
+        return {
+          ...state,
+          loops,
+          shells: state.shells.map(known => (known.id === ended.id ? { ...known, ended: ended.status } : known)),
+        }
+      })
     }
     return next(e)
   }).catch(($, e, next) => next(e))

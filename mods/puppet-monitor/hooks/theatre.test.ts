@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { alertOf, alerts, draw, historyOf, moveTask, office, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, departures, draw, errorOf, historyOf, kindOf, moveTask, office, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -103,7 +103,52 @@ test('the office lists each desk with its task, words and last report', () => {
   const floor = office({ tasks, history: [], shells: [], agents, loops, reports, isLeadBusy: false, now: 0 })
   expect(floor.board).toEqual([{ id: '1', subject: 'Fix login', status: 'in_progress', owner: 'builder', blocked: false }])
   const desk = floor.agents[0]
-  expect(desk).toEqual({ id: 'b', name: 'builder', status: 'running', working: true, sleeping: false, alert: undefined, task: '#1 Fix login', said: 'Tests pass.', doing: 'no tool call yet', report: reports.b })
+  expect(desk).toEqual({ id: 'b', name: 'builder', type: '', description: 'd', status: 'running', working: true, sleeping: false, alert: undefined, task: '#1 Fix login', said: 'Tests pass.', doing: 'no tool call yet', report: reports.b })
+})
+
+test('a tool call is sorted by what it does, and anything unknown is other', () => {
+  expect(kindOf('Edit')).toBe('write')
+  expect(kindOf('NotebookEdit')).toBe('write')
+  expect(kindOf('Grep')).toBe('read')
+  expect(kindOf('Bash')).toBe('shell')
+  expect(kindOf('WebSearch')).toBe('web')
+  expect(kindOf('mcp__claude-in-chrome__navigate')).toBe('web')
+  expect(kindOf('SendMessage')).toBe('message')
+  expect(kindOf('TaskUpdate')).toBe('board')
+  expect(kindOf('Agent')).toBe('agent')
+  expect(kindOf('SomethingNew')).toBe('other')
+})
+
+test('a failed call sets an error, and the first line of it is kept', () => {
+  expect(errorOf({ isError: true, text: 'File not found\nat line 3' })).toBe('File not found')
+  expect(errorOf({ deny: 'Blocked by a hook' })).toBe('Blocked by a hook')
+  expect(errorOf({ isError: false, text: 'fine' })).toBe(undefined)
+})
+
+test('an agent that left stays a minute, then is dropped', () => {
+  const was = { id: 'g', name: 'reviewer', description: 'd', status: 'idle', type: 'reviewer' }
+  const kept = { id: 'a', name: 'builder', description: 'd', status: 'running' }
+  const gone = departures({ agents: [kept, was] }, [kept], 1000)
+  expect(gone).toEqual([{ ...was, left: 1000 }])
+  expect(departures({ agents: [kept], departed: gone }, [kept], 1000 + GONE_MS)).toEqual(gone)
+  expect(departures({ agents: [kept], departed: gone }, [kept], 1001 + GONE_MS)).toEqual([])
+  const back = departures({ agents: [kept], departed: gone }, [kept, was], 2000)
+  expect(back).toEqual([])
+})
+
+test('a desk shows its call, its error, the open tasks that block it, and a leave', () => {
+  const agents = [{ id: 'b', name: 'builder', type: 'general-purpose', description: 'Builder. fix', status: 'running' }]
+  const tasks = [
+    { id: '1', subject: 'Schema', status: 'completed', blockedBy: [] },
+    { id: '2', subject: 'Login', status: 'in_progress', owner: 'builder', blockedBy: ['1', '3'] },
+    { id: '3', subject: 'Review', status: 'pending', blockedBy: [] },
+  ]
+  const running = [{ id: 't', doing: 'Edit: a.ts', startedAt: 500, kind: 'write' as const }]
+  const loops = { b: { running, lastAt: 500, said: [], lastError: { at: 400, text: 'old' } } }
+  const departed = [{ id: 'g', name: 'reviewer', type: 'reviewer', description: 'Reviewer.', status: 'idle', left: 900 }]
+  const floor = office({ tasks, history: [], shells: [], agents, loops, reports: {}, departed, isLeadBusy: false, now: 1000 }, '')
+  expect(floor.agents[0]).toMatchObject({ type: 'general-purpose', description: 'Builder. fix', kind: 'write', since: 500, blockedBy: ['3'], lastError: { at: 400, text: 'old' } })
+  expect(floor.agents[1]).toMatchObject({ id: 'g', gone: true, working: false, sleeping: true, alert: undefined })
 })
 
 test('a task taken by an agent, then done, is recorded with who, and named as the office shows it', () => {

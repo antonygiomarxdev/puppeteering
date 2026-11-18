@@ -3,9 +3,14 @@ export type Alert = { kind: 'loop' | 'stuck' | 'quiet'; text: string }
 export type Report = { at: number; text: string; to?: string }
 export type HistoryEvent = { at: number; id: string; subject: string; kind: 'created' | 'taken' | 'done'; who?: string }
 
+export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'other'
+
 export type Desk = {
   id: string
   name: string
+  /** The agent type it was spawned as, and its description. */
+  type: string
+  description: string
   status: string
   working: boolean
   /** No task in progress and no alert: drawn asleep. */
@@ -15,9 +20,17 @@ export type Desk = {
   said?: string
   doing: string
   report?: Report
+  /** The current call's kind, and when it started. Undefined between calls. */
+  kind?: ToolKind
+  since?: number
+  lastError?: { at: number; text: string }
+  /** Open tasks that block this agent's task. */
+  blockedBy?: string[]
+  /** Left the team within the last minute. */
+  gone?: boolean
 }
 
-export type Lead = { busy: boolean; alert?: Alert; said?: string; doing: string; task?: string }
+export type Lead = { busy: boolean; alert?: Alert; said?: string; doing: string; kind?: ToolKind; task?: string }
 export type BoardTask = { id: string; subject: string; status: string; owner?: string; blocked: boolean }
 
 export type OfficeState = {
