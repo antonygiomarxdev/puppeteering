@@ -2,6 +2,14 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: the guide said more than the docs
+
+Checked against the official pages, about 60 claims held and 11 said too much: a limit stated as absolute, a default stated as fixed, or something seen in a run with no mark saying so. None were wrong. The animation had drifted further: it showed task states the docs do not have, and teammates under the lead's control when the docs say they work independently.
+
+Changed: those 11 lines, the animation's states and captions, and the README. An independent session did the audit, and the lead checked its quotes against the pages.
+
+Learned: re-read the docs for what a picture claims, not only the text. Not checked: what the linked articles say, beyond the links resolving.
+
 ## 2026-11: a team with no task list is subagents
 
 A team ran for a day with zero tasks in its shared list. On newer models the Task tools are off by default, and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` does not turn them on. The person running it noticed before the lead did: the agents looked like subagents, because they nearly were.

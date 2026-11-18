@@ -33,11 +33,11 @@ A team that has one person's attention as its only reviewer is limited by that a
 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Turns teams on |
 | `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` | Gives the shared task list on models newer than Opus 4.7, Sonnet 4.6 and Haiku 4.5, which leave it out by default |
 
-With only the first, a team exists and has no task list: teammates work by message, and the lead ends up assigning everything by hand.
+On those newer models, with only the first, a team exists and has no task list: teammates work by message. *Observed:* the lead ends up assigning everything by hand.
 
 - Check at the start of a session: `TaskList` answers.
-- A split-pane teammate does not inherit a variable you exported in your shell. Start the lead with `claude --settings '{"env":{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"1"}}'`.
-- *Observed, not in the docs:* with the variable in `~/.claude/settings.json`, the tools appeared in a running session once the file was saved, and new in-process teammates had them.
+- A split-pane teammate does not inherit `CLAUDE_CODE_ENABLE_TODO_TOOLS` exported in your shell. Start the lead with `claude --settings '{"env":{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"1"}}'`.
+- *Observed:* with the variable in `~/.claude/settings.json`, the tools appeared in a running session once the file was saved, and new in-process teammates had them.
 
 ## Roles
 
@@ -56,7 +56,7 @@ Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-
 
 The lead fills the shared task list. Teammates take the next free task.
 
-- **Team size:** 3 to 5 teammates, with 5 to 6 tasks each (the docs). More adds coordination, not speed.
+- **Team size:** Start with 3 to 5 teammates, with 5 to 6 tasks each (the docs). Past some point, more adds coordination faster than speed.
 - **A task** carries its brief, its files and how it is verified. A teammate does not inherit the lead's conversation.
 - **Dependencies** go on the task, because a blocked task is not self-claimed: a review waits for the push; a task that edits a file waits for the PR that also edits it.
 - **Give the lead's own tasks an owner**, or a teammate can claim them. Writing them down lets you see the whole queue with `Ctrl+T`.
@@ -96,7 +96,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 
 ## Put what must hold in a hook
 
-`CLAUDE.md` is context, and hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences.
+`CLAUDE.md` is context, and `command` and `http` hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences.
 
 | Hook | Use |
 | --- | --- |
@@ -104,7 +104,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 | `TaskCompleted` | Refuse completion until the check passes |
 | `TeammateIdle` | Send a teammate back when work is left |
 | `PreToolUse` | Deny a dangerous command. A deny holds in every permission mode |
-| `Stop` | Send the session back when a check fails. It blocks at most 8 times in a row |
+| `Stop` | Send the session back when a check fails. By default it blocks at most 8 times in a row with no tool call between. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes that |
 
 Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 lines, and move procedures to [skills](https://code.claude.com/docs/en/skills).
 
@@ -113,20 +113,20 @@ Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 line
 Token use grows with each active teammate; the [costs page](https://code.claude.com/docs/en/costs) says about 7 times a normal session when teammates run in plan mode.
 
 - Keep teams small and spawn prompts focused. Shut a teammate down when its work is done.
-- A teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
-- The built-in `Explore` runs on your session's model. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
-- `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.
+- An in-process teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
+- The built-in `Explore` runs on your session's model, or on Opus when that is Fable on a subscription, Console account or LLM gateway. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
+- On a Pro, Max, Ultra, Team or Enterprise plan, `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.
 
 ## Safety
 
-- Teammates start in the lead's permission mode, including `bypassPermissions`. Pre-approve the common operations instead.
+- Teammates start in the lead's permission mode, including `bypassPermissions`. If the lead is in `dontAsk`, they start in Manual. Pre-approve the common operations instead.
 - A teammate's message is never your approval, and a teammate that was denied something cannot relay it.
 - A rule that stops teammates must hold in every directory they work in. Test it from a sibling worktree: `${CLAUDE_PROJECT_DIR}` stays at the project root while the hook's `cwd` follows the worktree.
 - Anything that changes production waits for a person's yes, for that step.
 
 ## Status
 
-Before telling anyone where things stand, list the agents and read the last comment of each open pull request. A teammate's message can arrive late, in a batch.
+Before telling anyone where things stand, list the agents and read the last comment of each open pull request. *Observed:* a teammate's message can arrive late, in a batch.
 
 Say plainly when the process is not what the documents say.
 
