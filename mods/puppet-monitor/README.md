@@ -19,13 +19,14 @@ token expires first."            docs tooling first."    file again."
 > Bash: npm test 12s             > Bash: npm install     was Read: auth.ts
 ```
 
-## Try it
+## Install
 
 ```
-claude --plugin-dir ~/dev/puppeteering/mods/puppet-monitor
+/plugin marketplace add antonygiomarxdev/puppeteering
+/plugin install puppet-monitor@puppeteering
 ```
 
-The pane opens beside the chat if the terminal is wide enough. `/puppets` opens it at any width.
+Send them as two prompts. A band above the prompt then counts your agents and shows any alert, with two buttons: **Office** and **Pane**. `/puppets` opens the pane too.
 
 `/office` opens the same team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
 

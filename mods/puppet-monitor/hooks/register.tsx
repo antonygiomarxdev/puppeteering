@@ -29,14 +29,20 @@ async function report($: EngineInterface, id: string, text: string, to?: string)
 // The office page polls this file, so it needs no server.
 const STATE = 'office/state.js'
 
+// Opens the office page in the browser; false when the platform's opener failed.
+async function openOffice($: EngineInterface): Promise<boolean> {
+  const page = `${$.plugin.root}/office/index.html`
+  const { platform } = await $.session.info()
+  const argv = platform === 'windows' ? ['cmd', '/c', 'start', '', page] : platform === 'macos' ? ['open', page] : ['xdg-open', page]
+  return (await $.process.run(argv)).exitCode === 0
+}
+
 export const register: Register = on => {
   let written = ''
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'puppets', description: 'Show the lead and its agents at work, in a pane' })
     await $.command.register({ name: 'office', description: 'Open the office: each agent at its desk, in the browser' })
-    void $.ui.open({ id: PANE, title: 'Puppets' })
-
     $.clock.every(TICK_MS, async () => {
       const now = await $.clock.now()
       const agents = await $.agent.list()
@@ -68,14 +74,42 @@ export const register: Register = on => {
     return { text: 'Puppets pane opened.' }
   })
 
-  on('command.run', { command: 'office' }, async $ => {
-    const page = `${$.plugin.root}/office/index.html`
-    const { platform } = await $.session.info()
-    const argv =
-      platform === 'windows' ? ['cmd', '/c', 'start', '', page] : platform === 'macos' ? ['open', page] : ['xdg-open', page]
-    const { exitCode } = await $.process.run(argv)
-    return { text: exitCode === 0 ? `Office opened: ${page}` : `Open this in a browser: ${page}` }
-  })
+  on('command.run', { command: 'office' }, async $ =>
+    ({ text: (await openOffice($)) ? 'Office opened in the browser.' : `Open this in a browser: ${$.plugin.root}/office/index.html` }),
+  )
+
+  // A row above the prompt: who is working, any alert, and the two ways to look.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    // Other mods share this slot: draw theirs below ours instead of replacing it.
+    const below = await next(e).catch(() => undefined)
+    const state = await read($, board)
+    const working = state.agents.filter(agent => agent.status === 'running' || agent.status === 'pending').length
+    const up = alerts(state)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
+    const office = () => openOffice($).then(ok => ok || $.ui.toast('puppets: could not open the office'))
+    const pane = () => $.ui.open({ id: PANE, title: 'Puppets' })
+    const mine = (
+      <Box flexDirection="row" alignItems="center" gap={2} width={width}>
+        <Text color="#d97757">● puppets</Text>
+        <Text dimColor>
+          {state.agents.length} agents, {working} working
+        </Text>
+        {up.length > 0 && <Text color="error">! {up.join(', ')}</Text>}
+        <Box flexGrow={1} />
+        <Button key="office" plain label="Office" onPress={office} />
+        <Button key="pane" plain label="Pane" onPress={pane} />
+      </Box>
+    )
+    return below ? (
+      <Box flexDirection="column">
+        {mine}
+        {below}
+      </Box>
+    ) : (
+      mine
+    )
+  }).catch(($, e, next) => next(e))
 
   on('session.send', async ($, e, next) => {
     if (e.agentId) await report($, e.agentId, e.text.split('\n')[0] ?? '', e.to)

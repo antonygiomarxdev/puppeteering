@@ -33,3 +33,20 @@ test('with agents, the pane draws them and a button to open each', async ($, on)
     await ui.unmount()
   }
 })
+
+test('the band above the prompt counts the team and offers the office', async ($, on) => {
+  let ticks = 0
+  on('command.register', () => ({ value: { command: 'puppets' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('clock.now', () => ({ value: 1000 }))
+  on('agent.list', () => ({ value: AGENTS }))
+  on('clock.every', () => (ticks++ === 0 ? { value: {} } : { deny: 'one tick is enough' }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await new Promise(resolve => setTimeout(resolve, 50))
+
+  const ui = await $.ui.mount({ plugin: 'puppet-monitor', surface: 'terminal', component: 'AbovePrompt', props: { bodyColumns: 100 } })
+  expect(await ui.find({ type: 'Text', text: /2 agents, 1 working/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Button', text: /Office/ })).toBeTruthy()
+  await ui.unmount()
+})
