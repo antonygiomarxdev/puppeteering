@@ -35,7 +35,7 @@ A team that has one person's attention as its only reviewer is limited by that a
 
 With only the first, a team exists and has no task list: teammates work by message, and the lead ends up assigning everything by hand.
 
-- Check at the start of a session: `TaskList` answers.
+- Check at the start of a session: `TaskList` answers, for the lead and for the first teammate. In the desktop app the lead had the tools and its teammates did not; see `LESSONS.md`.
 - A split-pane teammate does not inherit a variable you exported in your shell. Start the lead with `claude --settings '{"env":{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"1"}}'`.
 - *Observed, not in the docs:* with the variable in `~/.claude/settings.json`, the tools appeared in a running session once the file was saved, and new in-process teammates had them.
 

@@ -2,6 +2,12 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: teammates spawned from the desktop app had no task tools
+
+In a Claude desktop (Code tab) session with both team variables set, the lead had TaskCreate, TaskList and TaskUpdate, and filled the pile. Its four teammates, spawned with the Agent tool and a `name`, had none of them. One found the tasks by reading `~/.claude/tasks/<session>/*.json`, picked the lowest free "Researcher." task, and was refused by the permission classifier when it tried to mark it. It finished as a subagent and handed back.
+
+Open: whether the app spawns named agents as teammates at all, or as subagents. Until that is known, in that app the lead marks every task itself and assigns the next task by message ("new task N, not task M again").
+
 ## 2026-11: CRLF files defeat patch scripts
 
 On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with 
