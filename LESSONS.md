@@ -39,3 +39,7 @@ The lead wrote each brief by hand and started a track only when another ended. R
 ## 2026-11: a document said the opposite of the goal
 
 The team's own document said one team means one pull request at a time, so the lead worked in series while builders were already working in other worktrees. A rule that describes the first days of a tool goes stale. Re-measure it when the way of working changes.
+
+## 2026-11: two researchers wrote the same file
+
+Three researchers were told to take the lowest free task for their role. Two claimed the first task at once; the second write replaced the first, and the report that survived described the file that did not. The lead then set an owner on every task and messaged them, but the message arrived after a researcher had taken the next one. Only re-running each task's check exposed both. In the next run each teammate's task and files were named in its spawn prompt, with no claiming: 24 files, no collisions.
