@@ -7,4 +7,4 @@ export function fnv1a(text: string): number {
 
 /** One agent in 4096 is shiny; `?shiny=all` forces it for everyone. */
 export const isShiny = (id: string, search = ''): boolean =>
-  new URLSearchParams(search).get('shiny') === 'all' || fnv1a(id) % 4096 === 0
+  fnv1a(id) % 4096 === 0 || (search !== '' && new URLSearchParams(search).get('shiny') === 'all')

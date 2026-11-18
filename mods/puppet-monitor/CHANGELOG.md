@@ -5,6 +5,10 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 ## Unreleased
 
 ### Added
+- The scene draws costumes per archetype, poses and marks per mood, and the coordinator's celebration once per completion.
+- Stable seats on the map: a compact grid of neighbourhoods, one per kind of agent. Leavers walk out through the door and newcomers walk in; nobody else moves.
+- The office extras walk the floor, pale and unnamed. `?extras=off` removes them.
+- Name pills that would collide stack instead of overlapping.
 - `office-app/tools/demo-video/record.mjs`: records a scripted 31 s demo of the office to MP4, landscape and square, with `--theme=`.
 
 ## 0.2.0
@@ -27,9 +31,6 @@ The office becomes an app: Phaser 3, React and Vite in `office-app/`, built to t
 - One state file per session (`office/state-<key>.js`, opened with `?s=<key>`), so sessions from different repos no longer mix.
 - The Pane button toggles, and still works after a hand close.
 - On desktop, the office opens through a `file:` link plus a button, and failures show a toast.
-
-### Not yet in the scene
-- Costumes, moods, stable seats and extras exist as tested rules and sprites, but the scene does not draw them yet.
 
 ## 0.1.0
 

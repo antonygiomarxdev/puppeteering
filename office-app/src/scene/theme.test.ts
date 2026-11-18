@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { anchorsOf, layout, leadSpot, seatOf, standOf, type Rect, type Slot } from './layout'
+import { anchorsOf, leadSpot, standBeside, type Rect, type Slot } from './layout'
+import { hits, office, walk } from './testkit'
 import { pathfinder, walkGrid } from './grid'
 import { ParticleField, MAX_PARTICLES } from './particles'
 import { pickTheme } from './theme'
 import { THEMES } from './themes'
-import type { Point } from '../office/types'
 
 const at = (md: string) => new Date(`2026-${md}T12:00:00`)
 const pick = (md: string, search = '') => pickTheme(at(md), search, THEMES)?.name
@@ -29,27 +29,17 @@ describe('pickTheme', () => {
   })
 })
 
-const hits = (p: Point, r: Rect) => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h
 const touches = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
-function route(a: Point[]): Point[] {
-  const out: Point[] = []
-  for (let i = 1; i < a.length; i++) {
-    const n = Math.max(1, Math.ceil(Math.hypot(a[i]!.x - a[i - 1]!.x, a[i]!.y - a[i - 1]!.y)))
-    for (let k = 0; k <= n; k++) out.push({ x: a[i - 1]!.x + ((a[i]!.x - a[i - 1]!.x) * k) / n, y: a[i - 1]!.y + ((a[i]!.y - a[i - 1]!.y) * k) / n })
-  }
-  return out
-}
 
 describe('decor anchors', () => {
-  for (const n of [1, 4, 6, 9, 13]) {
+  for (const n of [1, 6, 9, 20]) {
     it(`for ${n} agents: bare slots are clear of furniture and of every route; furniture slots are on furniture and off the seats`, () => {
-      const L = layout(n)
+      const { L } = office(n)
       const a = anchorsOf(L)
       const find = pathfinder(walkGrid(L))
-      const paths = L.desks.flatMap((d, i) => {
-        const from = seatOf(d)
-        return [leadSpot(L, i), L.doorSpot, standOf(L, (i + 1) % n)].map(to => route([from, ...find(from, to)]))
-      })
+      const seats = Object.values(L.seatOf)
+      const paths = seats.flatMap((from, i) =>
+        [leadSpot(L, i), L.doorSpot, standBeside(seats[(i + 1) % seats.length]!)].map(to => walk([from, ...find(from, to)])))
       const feet = (s: Slot): Rect => s.foot ?? { x: s.x - 1, y: s.y - 1, w: 2, h: 1 }
       for (const s of [...a.wall, ...a['floor-corner']]) {
         L.blocked.forEach(b => expect(touches(feet(s), b)).toBe(false))
@@ -57,14 +47,14 @@ describe('decor anchors', () => {
       }
       for (const s of [...a.desk, ...a.lounge, ...a.meeting]) {
         expect(L.blocked.some(b => hits(s, b))).toBe(true)
-        L.desks.forEach(d => expect(Math.hypot(s.x - seatOf(d).x, s.y - seatOf(d).y)).toBeGreaterThan(10))
+        seats.forEach(seat => expect(Math.hypot(s.x - seat.x, s.y - seat.y)).toBeGreaterThan(10))
       }
-      // The corner decor's footprint joins the grid: every route still exists with it in place.
+      expect(a.desk).toHaveLength(L.desks.length)
+      // The corner decor's footprint joins the grid: every route to the door still exists with it in place.
       const withFeet = { ...L, blocked: [...L.blocked, ...a['floor-corner'].map(s => s.foot!)] }
       const find2 = pathfinder(walkGrid(withFeet))
-      L.desks.forEach(d => {
-        const from = seatOf(d)
-        const p = route([from, ...find2(from, L.doorSpot)])
+      seats.forEach(from => {
+        const p = walk([from, ...find2(from, L.doorSpot)])
         expect(p.length).toBeGreaterThan(2)
         a['floor-corner'].forEach(s => expect(p.some(q => hits(q, s.foot!))).toBe(false))
       })

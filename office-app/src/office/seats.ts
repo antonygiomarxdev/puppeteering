@@ -4,27 +4,38 @@ export type Point = { x: number; y: number }
 export type Rect = { x: number; y: number; w: number; h: number }
 
 // Geometry in world px. The scene zooms and scrolls; this module only knows the world.
+//
+// The floor, top to bottom: the meeting room and the lounge side by side, then a grid of neighbourhoods. The rooms are on
+// top so that the grid can wrap into more rows without moving anything. A neighbourhood is one column of desks, one grid
+// cell wide, that holds up to two half-pods stacked downward; a kind with more agents opens a second neighbourhood in the
+// next free cell. Nobody moves when someone joins or leaves, and cells never overlap.
 export const DESK = { w: 64, h: 48 }
-export const GAP = 24
-export const AISLE = 32
-/** A half-pod is one column of two desks facing across the aisle. A pod is 4 columns, 2 rows of desks. */
-export const COLS = 4
-export const PODS_PER_ROW = 2
+/** Between the two rows of a half-pod, where visitors stand. */
+export const AISLE = 20
+/** A half-pod is 2 desks facing each other across the aisle. */
+export const HALF_H = 2 * DESK.h + AISLE
+export const HALF_GAP = 12
+/** The most half-pods a neighbourhood holds; its cell reserves their room. */
+export const HALVES_MAX = 2
+export const CELL_H = HALVES_MAX * HALF_H + (HALVES_MAX - 1) * HALF_GAP
+export const GAP_H = 16
+export const GAP_V = 16
+export const STRIDE_X = DESK.w + GAP_H
+export const STRIDE_Y = CELL_H + GAP_V
+/** Neighbourhoods per grid row. */
+export const GRID_COLS = 6
 /** A neighbourhood that has been empty this long shrinks (last half-pod) or disappears. */
 export const EMPTY_MS = 60_000
 /** Walks to and from the door are drawn for this long after they start. Shortcut: scene timing may differ. */
 export const MOVE_MS = 5_000
 
-const POD_W = COLS * DESK.w
-const POD_H = 2 * DESK.h + AISLE
-const HOOD_W = PODS_PER_ROW * POD_W + (PODS_PER_ROW - 1) * GAP
-const STRIP_X = 240 + 2 * GAP
-const HOOD_STEP = HOOD_W + 2 * GAP
-
-export const MEETING: Rect = { x: 0, y: 0, w: 240, h: 160 }
-export const LOUNGE: Rect = { x: 0, y: MEETING.h + GAP, w: 240, h: 120 }
-/** The one entrance, on the left wall under the lounge. Fixed, so nothing moves when the floor grows. */
-export const DOOR: Point = { x: 0, y: LOUNGE.y + LOUNGE.h + GAP }
+export const MEETING: Rect = { x: 0, y: 0, w: 200, h: 124 }
+export const LOUNGE: Rect = { x: MEETING.w + 16, y: 0, w: 248, h: 124 }
+const GRID_W = GRID_COLS * STRIDE_X - GAP_H
+const GRID_Y0 = MEETING.h + 24
+const BOTTOM = 8
+/** The one entrance, on the left wall beside the first row of neighbourhoods. Fixed, so nothing moves when the floor grows. */
+export const DOOR: Point = { x: 0, y: GRID_Y0 + 56 }
 
 type Half = { rows: [string | null, string | null]; emptySince?: number }
 type Hood = { kind: Archetype; halves: Half[]; emptySince?: number }
@@ -35,12 +46,13 @@ export type Neighbourhood = {
   slot: number
   kind: Archetype
   rect: Rect
+  /** One per half-pod. */
   pods: Rect[]
   desks: { rect: Rect; occupant: string | null }[]
 }
 
 export type Plan = {
-  /** Persisted state, index = neighbourhood slot. An undefined slot is free. Carried into the next plan. */
+  /** Persisted state, index = neighbourhood slot (grid cell, row by row). An undefined slot is free. Carried into the next plan. */
   slots: (Hood | undefined)[]
   /** Persisted state: the Conductor's seats in the meeting room. */
   meeting: (string | null)[]
@@ -55,27 +67,18 @@ export type Plan = {
   size: { w: number; h: number }
 }
 
-const hoodX = (slot: number) => STRIP_X + slot * HOOD_STEP
+const cellX = (slot: number) => (slot % GRID_COLS) * STRIDE_X
+const cellY = (slot: number) => GRID_Y0 + Math.floor(slot / GRID_COLS) * STRIDE_Y
 
 /** Desk rectangle. Depends only on the slot, half-pod index and row, so it never changes for a seat. */
 export function deskRect(slot: number, half: number, row: number): Rect {
-  const pod = Math.floor(half / COLS)
-  const col = half % COLS
-  const x = hoodX(slot) + (pod % PODS_PER_ROW) * (POD_W + GAP) + col * DESK.w
-  const y = Math.floor(pod / PODS_PER_ROW) * (POD_H + GAP) + row * (DESK.h + AISLE)
-  return { x, y, w: DESK.w, h: DESK.h }
+  return { x: cellX(slot), y: cellY(slot) + half * (HALF_H + HALF_GAP) + row * (DESK.h + AISLE), w: DESK.w, h: DESK.h }
 }
 
 /** The chair spot in front of a desk. */
 const seatAt = (r: Rect): Point => ({ x: r.x + r.w / 2, y: r.y + r.h })
 
-const meetingSeat = (i: number): Point => ({ x: MEETING.x + GAP + i * DESK.w, y: MEETING.y + MEETING.h / 2 })
-
-function hoodHeight(hood: Hood): number {
-  const pods = Math.ceil(hood.halves.length / COLS)
-  const rows = Math.ceil(pods / PODS_PER_ROW)
-  return rows * POD_H + (rows - 1) * GAP
-}
+const meetingSeat = (i: number): Point => ({ x: MEETING.x + 24 + i * DESK.w, y: MEETING.y + 80 })
 
 function cloneHood(h: Hood): Hood {
   return {
@@ -83,6 +86,26 @@ function cloneHood(h: Hood): Hood {
     emptySince: h.emptySince,
     halves: h.halves.map(x => ({ rows: [x.rows[0], x.rows[1]], emptySince: x.emptySince })),
   }
+}
+
+/** A free desk of a neighbourhood of this kind, else room for one more half-pod in one, else a new neighbourhood in the first free cell. */
+function place(slots: (Hood | undefined)[], kind: Archetype): { slot: number; hi: number; row: number } {
+  for (let slot = 0; slot < slots.length; slot++) {
+    const hood = slots[slot]
+    if (hood?.kind !== kind) continue
+    for (let hi = 0; hi < hood.halves.length; hi++) for (let row = 0; row < 2; row++) if (hood.halves[hi].rows[row] === null) return { slot, hi, row }
+  }
+  for (let slot = 0; slot < slots.length; slot++) {
+    const hood = slots[slot]
+    if (hood?.kind === kind && hood.halves.length < HALVES_MAX) {
+      hood.halves.push({ rows: [null, null] })
+      return { slot, hi: hood.halves.length - 1, row: 0 }
+    }
+  }
+  let slot = slots.findIndex(h => !h)
+  if (slot < 0) slot = slots.length
+  slots[slot] = { kind, halves: [{ rows: [null, null] }] }
+  return { slot, hi: 0, row: 0 }
 }
 
 /**
@@ -113,7 +136,7 @@ export function seatPlan(prev: Plan | undefined, desks: Identity[], now: number)
     }
   })
 
-  // Seating: newcomers in list order. The first sighting of a kind claims the first free neighbourhood slot.
+  // Seating: newcomers in list order. The first sighting of a kind claims the first free neighbourhood cell.
   const seated = new Set<string>([...meeting.filter((id): id is string => !!id), ...slots.flatMap(h => (h ? h.halves.flatMap(x => x.rows) : []).filter((id): id is string => !!id))])
   for (const d of desks) {
     if (d.gone || seated.has(d.id)) continue
@@ -126,24 +149,8 @@ export function seatPlan(prev: Plan | undefined, desks: Identity[], now: number)
       meeting[i] = d.id
       at = meetingSeat(i)
     } else {
-      let slot = slots.findIndex(h => h?.kind === arch)
-      if (slot < 0) {
-        slot = slots.findIndex(h => !h)
-        if (slot < 0) slot = slots.length
-        slots[slot] = { kind: arch, halves: [{ rows: [null, null] }] }
-      }
-      const hood = slots[slot]!
-      let hi = -1
-      let row = -1
-      find: for (let h = 0; h < hood.halves.length; h++) {
-        for (let r = 0; r < 2; r++) if (hood.halves[h].rows[r] === null) { hi = h; row = r; break find }
-      }
-      if (hi < 0) {
-        hood.halves.push({ rows: [null, null] })
-        hi = hood.halves.length - 1
-        row = 0
-      }
-      hood.halves[hi].rows[row] = d.id
+      const { slot, hi, row } = place(slots, arch)
+      slots[slot]!.halves[hi].rows[row] = d.id
       at = seatAt(deskRect(slot, hi, row))
     }
     if (prev) moves.push({ id: d.id, kind: 'arrive', from: DOOR, to: at, since: now })
@@ -172,16 +179,14 @@ function derive(slots: (Hood | undefined)[], meeting: (string | null)[], moves: 
   const seats: Record<string, Seat> = {}
   meeting.forEach((id, i) => { if (id) seats[id] = { slot: 'meeting', at: meetingSeat(i) } })
   const neighbourhoods: Neighbourhood[] = []
-  let bottom = Math.max(MEETING.y + MEETING.h, LOUNGE.y + LOUNGE.h)
+  // The floor reaches only as far down as the neighbourhoods do now; it grows with them, and nothing on it moves.
+  let bottom = DOOR.y + 24
   slots.forEach((hood, slot) => {
     if (!hood) return
     const pods: Rect[] = []
     const desks: Neighbourhood['desks'] = []
     hood.halves.forEach((half, hi) => {
-      if (hi % COLS === 0) {
-        const pod = hi / COLS
-        pods.push({ x: hoodX(slot) + (pod % PODS_PER_ROW) * (POD_W + GAP), y: Math.floor(pod / PODS_PER_ROW) * (POD_H + GAP), w: POD_W, h: POD_H })
-      }
+      pods.push({ x: cellX(slot), y: cellY(slot) + hi * (HALF_H + HALF_GAP), w: DESK.w, h: HALF_H })
       for (let row = 0; row < 2; row++) {
         const rect = deskRect(slot, hi, row)
         const occupant = half.rows[row]
@@ -189,11 +194,10 @@ function derive(slots: (Hood | undefined)[], meeting: (string | null)[], moves: 
         if (occupant) seats[occupant] = { slot, at: seatAt(rect) }
       }
     })
-    const rect = { x: hoodX(slot), y: 0, w: HOOD_W, h: hoodHeight(hood) }
-    bottom = Math.max(bottom, rect.h)
-    neighbourhoods.push({ slot, kind: hood.kind, rect, pods, desks })
+    const h = hood.halves.length * HALF_H + (hood.halves.length - 1) * HALF_GAP
+    bottom = Math.max(bottom, cellY(slot) + h)
+    neighbourhoods.push({ slot, kind: hood.kind, rect: { x: cellX(slot), y: cellY(slot), w: DESK.w, h }, pods, desks })
   })
-  const width = slots.length > 0 ? STRIP_X + slots.length * HOOD_STEP - 2 * GAP : MEETING.w
   return {
     slots,
     meeting,
@@ -203,6 +207,6 @@ function derive(slots: (Hood | undefined)[], meeting: (string | null)[], moves: 
     meetingRect: MEETING,
     lounge: LOUNGE,
     door: DOOR,
-    size: { w: Math.max(width, LOUNGE.w), h: Math.max(bottom, DOOR.y) + GAP },
+    size: { w: GRID_W, h: bottom + BOTTOM },
   }
 }

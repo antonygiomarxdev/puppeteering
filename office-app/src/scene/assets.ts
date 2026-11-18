@@ -5,6 +5,8 @@ import goldJson from '../../public/assets/sprites/critter-gold.json'
 import goldPng from '../../public/assets/sprites/critter-gold.png'
 import furnitureJson from '../../public/assets/sprites/furniture.json'
 import furniturePng from '../../public/assets/sprites/furniture.png'
+import costumesJson from '../../public/assets/sprites/costumes.json'
+import costumesPng from '../../public/assets/sprites/costumes.png'
 import marksJson from '../../public/assets/sprites/marks.json'
 import marksPng from '../../public/assets/sprites/marks.png'
 import tilesPng from '../../public/assets/sprites/tileset.png'
@@ -14,6 +16,7 @@ export const ATLASES = [
   ['critter-gold', goldPng, goldJson],
   ['furniture', furniturePng, furnitureJson],
   ['marks', marksPng, marksJson],
+  ['costumes', costumesPng, costumesJson],
 ] as const
 
 export { tilesPng }

@@ -180,3 +180,70 @@ describe('the plan for the scene', () => {
     }
   })
 })
+
+describe('the grid', () => {
+  const six = [B('b'), R('r'), agent('d', 'designer'), agent('x', 'Explore'), agent('p', 'Plan'), agent('o', 'statusline-setup')]
+
+  it('6 kinds of one agent each make a world at most 1.8 times as wide as tall', () => {
+    const p = seatPlan(undefined, six, 0)
+    expect(p.neighbourhoods).toHaveLength(6)
+    expect(p.size.w).toBeLessThanOrEqual(1.8 * p.size.h)
+  })
+
+  it('the rooms are on top and the neighbourhoods below, side by side in the first row', () => {
+    const p = seatPlan(undefined, six, 0)
+    const ys = new Set(p.neighbourhoods.map(n => n.rect.y))
+    expect(ys.size).toBe(1)
+    for (const n of p.neighbourhoods) expect(n.rect.y).toBeGreaterThanOrEqual(p.meetingRect.y + p.meetingRect.h)
+    expect(p.lounge.x).toBeGreaterThanOrEqual(p.meetingRect.x + p.meetingRect.w)
+    expect(p.lounge.x + p.lounge.w).toBe(p.size.w)
+  })
+
+  it('a seventh neighbourhood wraps to a second row and moves nobody, rooms included', () => {
+    const p0 = seatPlan(undefined, six, 0)
+    const p1 = seatPlan(p0, [...six, agent('h0', '', { name: 'Ana' })], 1000)
+    expect(p1.neighbourhoods).toHaveLength(7)
+    for (const d of six) expect(seatOf(p1, d.id)).toEqual(seatOf(p0, d.id))
+    const seventh = p1.neighbourhoods[6]
+    const first = p1.neighbourhoods[0]
+    expect(seventh.rect.x).toBe(first.rect.x)
+    expect(seventh.rect.y).toBeGreaterThan(first.rect.y + 2 * 116)
+    expect(p1.meetingRect).toEqual(p0.meetingRect)
+    expect(p1.lounge).toEqual(p0.lounge)
+    expect(p1.door).toEqual(p0.door)
+    expect(p1.size.w).toBe(p0.size.w)
+    expect(p1.size.h).toBeGreaterThan(p0.size.h)
+  })
+
+  it('a neighbourhood grows downward inside its own cell and never touches the next row', () => {
+    const builders = (n: number) => Array.from({ length: n }, (_, i) => B(`b${i}`))
+    const p1 = seatPlan(undefined, [...builders(1), R('r')], 0)
+    const p4 = seatPlan(p1, [...builders(4), R('r')], 1000)
+    const [a1] = p1.neighbourhoods, [a4] = p4.neighbourhoods
+    expect(a4.rect.x).toBe(a1.rect.x)
+    expect(a4.rect.y).toBe(a1.rect.y)
+    expect(a4.rect.w).toBe(a1.rect.w)
+    expect(a4.rect.h).toBeGreaterThan(a1.rect.h)
+    const second = seatPlan(undefined, [...builders(4), ...six.slice(1), agent('h0', '', { name: 'Ana' })], 0).neighbourhoods
+    const top = second.find(n => n.kind === 'Builder')!
+    const wrapped = second.find(n => n.kind === 'Helper')!
+    expect(top.rect.y + top.rect.h).toBeLessThan(wrapped.rect.y)
+  })
+
+  it('a fifth builder opens a second Builder neighbourhood in the next free cell and moves nobody', () => {
+    const bs = Array.from({ length: 5 }, (_, i) => B(`b${i}`))
+    const p0 = seatPlan(undefined, [...bs.slice(0, 4), R('r')], 0)
+    const p1 = seatPlan(p0, [...bs, R('r')], 1000)
+    for (const id of ['b0', 'b1', 'b2', 'b3', 'r']) expect(seatOf(p1, id)).toEqual(seatOf(p0, id))
+    expect(p1.neighbourhoods.filter(n => n.kind === 'Builder')).toHaveLength(2)
+    expect(p1.seats.b4.slot).not.toBe(p1.seats.b0.slot)
+  })
+
+  it('pairs facing each other fill first: two builders share a half-pod', () => {
+    const p = seatPlan(undefined, [B('b0'), B('b1')], 0)
+    const [a, b] = [seatOf(p, 'b0')!, seatOf(p, 'b1')!]
+    expect(a.x).toBe(b.x)
+    expect(b.y).toBeGreaterThan(a.y)
+    expect(p.neighbourhoods[0].desks).toHaveLength(2)
+  })
+})
