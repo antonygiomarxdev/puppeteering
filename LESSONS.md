@@ -2,6 +2,11 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: CRLF files defeat patch scripts
+
+On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with 
+, and the matches silently failed. The Edit tool handles line endings; a script must read with newline='' and use the file's own ending.
+
 ## 2026-11: a teammate killed the owner's browser
 
 A builder recording a video with headless Chrome ran `taskkill /IM chrome.exe` to clear a stuck run. That closed every Chrome window on the machine, the owner's included. It noticed and reported it, and its script then killed only processes whose command line held its own profile folder.
