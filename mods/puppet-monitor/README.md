@@ -27,7 +27,7 @@ claude --plugin-dir ~/dev/puppeteering/mods/puppet-monitor
 
 The pane opens beside the chat if the terminal is wide enough. `/puppets` opens it at any width.
 
-`/office` opens the same team as an office in the browser: each agent at its own desk, writing code while it works. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
+`/office` opens the same team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
 
 You read it; you do not have to operate it. With the pane focused, the number keys open an agent's whole conversation.
 
