@@ -155,23 +155,3 @@ function tileset() {
   list.forEach(([name, c], i) => { sx.drawImage(c, (i % cols) * N, Math.floor(i / cols) * N); tiles[name] = i })
   return { sheet, meta: { image: 'tileset.png', tileWidth: N, tileHeight: N, columns: cols, tileCount: list.length, tiles } }
 }
-
-async function main() {
-  const out = []
-  const save = async (dest, base, { sheet, atlas }, scale) => {
-    await post(dest, `${base}.png`, png(sheet)); await post(dest, `${base}.json`, JSON.stringify(atlas, null, 2))
-    await post('scratch', `preview-${base}.png`, png(preview(sheet, scale)))
-    out.push(`${base}: ${sheet.width}x${sheet.height}, ${Object.keys(atlas.frames).length} frames`)
-  }
-  await save('sprites', 'critter', pack(critterFrames(critterOrange, '#d97757'), 230, 'critter.png'), 8)
-  await save('sprites', 'critter-gold', pack(critterFrames(critterGold, '#f5c542'), 230, 'critter-gold.png'), 8)
-  await save('sprites', 'marks', pack(marks(), 40, 'marks.png'), 8)
-  const furn = [...FURNITURE.map(([name, fn]) => ({ name, ...trimmed(fn) })), ...TILES]
-  await save('sprites', 'furniture', pack(furn, 300, 'furniture.png'), 6)
-  const ts = tileset()
-  await post('sprites', 'tileset.png', png(ts.sheet)); await post('sprites', 'tileset.json', JSON.stringify(ts.meta, null, 2))
-  await post('scratch', 'preview-tileset.png', png(preview(ts.sheet, 8)))
-  out.push('tileset: ' + ts.sheet.width + 'x' + ts.sheet.height + ', ' + ts.meta.tileCount + ' tiles')
-  document.title = 'done: ' + out.join(' | ')
-}
-main().catch(e => { document.title = 'error: ' + e.message; console.error(e) })

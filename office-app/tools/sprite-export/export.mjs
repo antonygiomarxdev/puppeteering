@@ -28,6 +28,8 @@ const swaps = [
 let gold = crit
 for (const [a, b] of swaps) { if (!gold.includes(a)) throw new Error(`critter() changed, cannot make the gold variant: ${a}`); gold = gold.replace(a, b) }
 
+// Bare variants: the same critter with the pen drawn out (the costumes bring their own prop).
+const bare = (src => { for (const a of ["if (typing) { // the pen", "if (pose === 'talk') {"]) { if (!src.includes(a)) throw new Error(`critter() changed, cannot make the bare variant: ${a}`); src = src.replace(a, 'if (false) {' + (a.includes('pen') ? ' // the pen' : '')) } return src })
 const html = `<!doctype html><meta charset="utf-8"><script>
 let ctx = null
 ${cut(page, 'const SHADES', '// The critter:')}
@@ -36,9 +38,12 @@ ${cut(page, '// The place:', '// Layout in art pixels')}
 const mkCritter = src => new Function('px', src + '; return critter')(px)
 const critterOrange = mkCritter(${JSON.stringify(crit)})
 const critterGold = mkCritter(${JSON.stringify(gold)})
-${readFileSync(join(here, 'exporter.js'), 'utf8')}
+const critterOrangeBare = mkCritter(${JSON.stringify(bare(crit))})
+const critterGoldBare = mkCritter(${JSON.stringify(bare(gold))})
+${['exporter.js', 'characters.js', 'main.js'].map(f => readFileSync(join(here, f), 'utf8')).join(String.fromCharCode(10))}
 </script>`
 
+if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html) // debugging: the page exactly as Chrome gets it
 const DEST = { sprites: out, scratch: join(tmpdir(), 'sprite-export-previews') }
 for (const d of Object.values(DEST)) mkdirSync(d, { recursive: true })
 const saved = []
