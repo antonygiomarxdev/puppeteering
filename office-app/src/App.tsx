@@ -3,6 +3,8 @@ import { EventBus, STATE_EVENT } from './EventBus'
 import { startPolling } from './state'
 import { startGame } from './game'
 import type { OfficeState } from './types'
+import { Header, History } from './hud/Hud'
+import './hud/hud.css'
 
 export function App() {
   const [state, setState] = useState<OfficeState | null>(null)
@@ -17,24 +19,11 @@ export function App() {
   }, [])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <header style={{ padding: '6px 12px', background: '#26262b', display: 'flex', gap: 12 }}>
-        <b>Puppet Office{state ? ` · ${state.project.name}` : ''}</b>
-        <span style={{ opacity: 0.6 }}>{state?.project.cwd}</span>
-        <span id="info" style={{ marginLeft: 'auto', opacity: 0.6 }}>{info}</span>
-      </header>
-      <main style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <div id="stage" style={{ flex: 1, minWidth: 0 }} />
-        <aside id="queue" style={{ width: 280, overflowY: 'auto', padding: 8, background: '#202024' }}>
-          <b>History</b>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {(state?.history ?? []).map((e, i) => (
-              <li key={`${e.at}-${e.id}-${i}`} style={{ padding: '3px 0' }}>
-                {e.kind} #{e.id} {e.subject}{e.who ? ` (${e.who})` : ''}
-              </li>
-            ))}
-          </ul>
-        </aside>
+    <div className="office-app">
+      <Header state={state} info={info} />
+      <main>
+        <div id="stage" />
+        <History events={state?.history ?? []} />
       </main>
     </div>
   )

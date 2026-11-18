@@ -1,0 +1,30 @@
+:root {
+  --bg: #eceaf4;
+  --ink: #2b2838;
+  --dim: #7a7590;
+  --lead: #d98a00;
+  --line: #cfc9e6;
+  --panel: #ffffff;
+}
+
+.office-app { display: flex; flex-direction: column; height: 100%; background: var(--bg); color: var(--ink); font: 13px/1.35 ui-monospace, Consolas, monospace; }
+.hud-header { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 8px 14px; }
+.hud-header b { color: var(--lead); }
+.dim { color: var(--dim); }
+.stat { margin-left: auto; }
+
+main { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 0 12px 12px; }
+#stage { flex: 1; min-width: 0; border-radius: 10px; overflow: hidden; }
+
+.history { width: 280px; flex: none; overflow-y: auto; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 10px; box-shadow: 0 3px 0 var(--line); }
+.history h2 { margin: 0 0 6px; font-size: 13px; color: var(--lead); }
+.history ul { list-style: none; margin: 0; padding: 0; }
+.history li { padding: 3px 0; border-bottom: 1px solid #f0edf8; }
+.history .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.history .empty { color: var(--dim); padding: 24px 0; margin: 0; }
+
+@media (max-width: 700px) {
+  main { flex-direction: column; }
+  #stage { flex: none; height: 60vh; }
+  .history { width: auto; }
+}
