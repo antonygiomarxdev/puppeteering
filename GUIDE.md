@@ -7,6 +7,7 @@ What running [Claude Code agent teams](https://code.claude.com/docs/en/agent-tea
 - [Should you use a team?](#should-you-use-a-team)
 - [Setup that is easy to miss](#setup-that-is-easy-to-miss)
 - [Roles](#roles)
+- [One coordinator per goal](#one-coordinator-per-goal)
 - [The pile](#the-pile)
 - [Files and worktrees](#files-and-worktrees)
 - [Parallel, and where it stops](#parallel-and-where-it-stops)
@@ -45,12 +46,33 @@ On those newer models, with only the first, a team exists and has no task list: 
 
 | Role | Model | Does |
 | --- | --- | --- |
-| Lead | Opus | Talks to the owner, decides how, creates tasks, verifies, commits, pushes, merges |
+| Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a merged pull request |
 | Builder | Haiku | Writes code in the files its task names |
 | Reviewer | Sonnet | Independent review of a pushed head. Never the author |
 | Researcher | Sonnet | Answers one question, or investigates a track and drafts its brief |
 
 Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-agents), and spawn by role. A model named in a spawn prompt overrides the definition. The definition's `skills` field does not apply to a teammate.
+
+## One coordinator per goal
+
+*This guide's practice, not the docs':* give one goal to one lead, in its own worktree, and let it finish the goal. The lead splits the goal, coordinates its team and takes it to a merged pull request. It does not stop at a plan.
+
+Avoiding conflicts is the coordinator's job, not the workers'. As a lead, it delegates so no two teammates touch the same file. Among leads, it keeps goals apart so no two coordinators touch the same file. A collision means the split was wrong, so fix the split, not the worker.
+
+- **A coordinator is a session, not a teammate.** A session has one team, a teammate cannot start teammates, and the lead is fixed for the session's life ([limitations](https://code.claude.com/docs/en/agent-teams#limitations)). So start each coordinator yourself, in its own worktree: `git worktree add ../<repo>-<goal> -b <goal>`, then `claude` there, or open the worktree in a workspace tool such as Orca.
+- **One goal, one branch, one worktree.** Two coordinators never edit the same file. If two goals need the same file, one waits for the other's merge, or both become one goal.
+- **You set the limit.** Watch the coordinators yourself while you can review what they ship. Past that, add a coordinator of coordinators.
+
+### A coordinator of coordinators
+
+A session that only coordinates. It writes no code: it briefs each goal's coordinator, reads their pull requests and orders the merges.
+
+- It reaches the other sessions with [cross-session messaging](https://code.claude.com/docs/en/cross-session-messaging): Claude finds them with `ListAgents` and writes with `SendMessage`. A message is plain text, and it never approves anything in the session that receives it.
+- To hear when a coordinator is done, ask for one notice when that session next goes idle, instead of checking on it. Only the main conversation can ask, only for sessions on the same machine, and the request expires after 12 hours.
+- Run every coordinator in the same permission class. By default, a session that bypasses permission prompts holds a message from one that does not, and the other way round, for your approval; an unanswered approval drops the message after 5 minutes. If the classes must differ, set `crossSessionInbound` to `accept`.
+- Merges stay serial (see [Parallel, and where it stops](#parallel-and-where-it-stops)). One session or one person owns the merge order.
+
+Status: one coordinator per worktree, several side by side, is how this guide's owner works day to day. Not yet run: a coordinator of coordinators.
 
 ## The pile
 
@@ -71,7 +93,7 @@ Status: run with one researcher, one builder and one reviewer, each given no tas
 
 Two teammates editing one file overwrite each other, and teams do not isolate teammates. So every task names a set of files that does not overlap with another running task.
 
-*This guide's practice, not the docs':* for several branches at once, create one sibling worktree per stream with `git worktree add`, and name it by absolute path in the task. Passing `isolation` on the Agent call would make it a subagent, not a teammate. Install dependencies in each worktree, because a fresh checkout has none.
+*This guide's practice, not the docs':* one worktree per coordinator (see [One coordinator per goal](#one-coordinator-per-goal)). Inside it, teammates share the checkout and split by files. A goal that needs two branches at once is two goals. Passing `isolation` on the Agent call would make it a subagent, not a teammate. Install dependencies in each worktree, because a fresh checkout has none.
 
 ## Parallel, and where it stops
 
@@ -135,6 +157,6 @@ Say plainly when the process is not what the documents say.
 
 ## Known limits
 
-From the docs: `/resume` and `/rewind` do not restore in-process teammates; one team per session; no nested teams; the lead is fixed; task status can lag, so check whether stuck work is really done; shutdown can be slow; split panes need tmux or iTerm2.
+From the docs: `/resume` and `/rewind` do not restore in-process teammates; one team per session; no nested teams; the lead is fixed, so each coordinator is its own session; task status can lag, so check whether stuck work is really done; shutdown can be slow; split panes need tmux or iTerm2.
 
 So keep a status file a restarted session can read, with each builder's files and task.
