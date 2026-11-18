@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { EventBus, STATE_EVENT } from './EventBus'
 import { startPolling } from './state'
+import { isUnpicked } from './normalize'
 import { startGame } from './game'
 import type { OfficeState } from './types'
 import { Header, History } from './hud/Hud'
@@ -19,9 +20,12 @@ export function App() {
     return () => { stop(); EventBus.off(STATE_EVENT, on); game.destroy(true) }
   }, [])
 
+  // With no ?s= the page reads the plain state.js, which may be a dead session's or an older mod's: say so.
+  const picked = new URLSearchParams(location.search).has('s')
+  const note = state && !picked && isUnpicked(state) ? 'no session picked' : undefined
   return (
     <div className="office-app">
-      <Header state={state} info={info} />
+      <Header state={state} info={info} note={note} />
       <main>
         <div id="stage" />
         <div className="side">

@@ -12,6 +12,9 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 - Name pills that would collide stack instead of overlapping.
 - `office-app/tools/demo-video/record.mjs`: records a scripted 31 s demo of the office to MP4, landscape and square, with `--theme=`.
 
+### Fixed
+- A state file from an older mod no longer blanks the page: the page normalizes every state it reads. With no `?s=`, a stale state shows "no session picked".
+
 ## 0.2.0
 
 The office becomes an app: Phaser 3, React and Vite in `office-app/`, built to the single page `office/index.html`.

@@ -2,13 +2,13 @@ import type { HistoryEvent, OfficeState } from '../types'
 import { shadeOf } from './colors'
 import { eventLine, workingCount } from './format'
 
-export function Header({ state, info }: { state: OfficeState | null; info: string }) {
+export function Header({ state, info, note }: { state: OfficeState | null; info: string; note?: string }) {
   return (
     <header className="hud-header">
-      <b>Puppet Office{state ? ` · ${state.project.name}` : ''}</b>
-      {state && <span className="dim">{state.project.cwd}</span>}
+      <b>Puppet Office{state?.project?.name ? ` · ${state.project.name}` : ''}</b>
+      {state?.project?.cwd && <span className="dim">{state.project.cwd}</span>}
       <span className="dim stat">
-        {state
+        {note ? note : state
           ? `${state.agents.length} agents, ${workingCount(state.agents)} working · tasks ${state.tasks.done}/${state.tasks.total} done`
           : info}
       </span>

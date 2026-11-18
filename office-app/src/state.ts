@@ -1,4 +1,5 @@
 import { EventBus, STATE_EVENT } from './EventBus'
+import { normalize } from './normalize'
 import type { OfficeState } from './types'
 
 // ?s=<key> names the session's file; without a key it reads the plain state.js.
@@ -17,9 +18,11 @@ export function startPolling(info: (text: string) => void, win: Window = window)
   const file = stateFile(win.location.search)
   const doc = win.document
   let failures = 0
-  ;(win as unknown as { office: (s: OfficeState) => void }).office = s => {
+  // Whatever the session's mod wrote, the page gets a complete state: old files lack fields (project, history, type...).
+  ;(win as unknown as { office: (raw: unknown) => void }).office = raw => {
+    const s = normalize(raw)
     EventBus.emit(STATE_EVENT, s)
-    if (s.project) doc.title = titleOf(s)
+    if (s.project.name) doc.title = titleOf(s)
   }
   // If this line never shows, no script ran in the browser; if it stays, the state file did not load.
   info(`script running, loading ${file}...`)
