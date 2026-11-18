@@ -145,6 +145,7 @@ export const register: Register = on => {
 
   on('command.run', { command: 'office' }, async $ => {
     const why = await prepare($, key, cwd).then(opened => ((key = opened.key), openOffice($, opened.page)), String)
+    if (why !== undefined) await update($, board, state => ({ ...state, officeFailed: true }))
     return { text: why === undefined ? 'Office opened in the browser.' : `Open this in a browser: ${launcherUrl($.plugin.root, key)}` }
   })
 
@@ -159,7 +160,10 @@ export const register: Register = on => {
     const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
     const office = async () => {
       const why = await prepare($, key, cwd).then(opened => ((key = opened.key), openOffice($, opened.page)), String)
-      if (why !== undefined) $.ui.toast(`puppets: office failed: ${why}`)
+      if (why !== undefined) {
+        $.ui.toast(`puppets: office failed: ${why}`)
+        await update($, board, state => ({ ...state, officeFailed: true }))
+      }
     }
     const mine = (
       <Box flexDirection="row" alignItems="center" gap={2} width={width}>
@@ -170,8 +174,8 @@ export const register: Register = on => {
         {up.length > 0 && <Text color="error">! {up.join(', ')}</Text>}
         <Box flexGrow={1} />
         <Button key="office" plain label="Office" onPress={office} />
-        {e.surface !== 'terminal' && (
-          // A remote surface draws a file: link as text unless it can open it, so the link is offered beside the button.
+        {e.surface !== 'terminal' && state.officeFailed === true && (
+          // A remote surface draws a file: link as text unless it can open it. It is offered only after an open failed, since the button opens the page.
           <Markdown text={`[open file](${key ? launcherUrl($.plugin.root, key) : officeUrl($.plugin.root)})`} />
         )}
       </Box>

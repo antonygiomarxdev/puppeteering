@@ -32,13 +32,13 @@ The button and `/office` open `office/open-<session>.html`, a launcher with no q
 | OS | Surface | How Office opens | If it fails |
 | --- | --- | --- | --- |
 | Windows | Terminal | `cmd /c start "" <launcher>`; the OS is read from `session.info` or the drive in the plugin root | Toast `puppets: office failed: <reason>`; `/office` prints a `file:` link to the launcher |
-| Windows | Desktop app | The same `cmd` opener. The app has no `session.info`, so a drive or UNC plugin root says Windows. A rejected `process.run` counts as a failed opener | The toast, and the `[open file]` link in the band, which opens the launcher |
+| Windows | Desktop app | The same `cmd` opener. The app has no `session.info`, so a drive or UNC plugin root says Windows. A rejected `process.run` counts as a failed opener | The toast. After a failure, the `[open file]` link appears in the band and opens the launcher |
 | macOS | Terminal | `open <launcher>` | The same toast and `/office` link |
-| macOS | Desktop app | No `session.info`: tries `open`, then `xdg-open` | The toast, and the `[open file]` link |
+| macOS | Desktop app | No `session.info`: tries `open`, then `xdg-open` | The toast. After a failure, the `[open file]` link appears in the band |
 | Linux | Terminal | `xdg-open <launcher>` | The same toast and `/office` link |
-| Linux | Desktop app | No `session.info`: tries `open`, then `xdg-open` | The toast, and the `[open file]` link |
+| Linux | Desktop app | No `session.info`: tries `open`, then `xdg-open` | The toast. After a failure, the `[open file]` link appears in the band |
 
-The `[open file]` link is Markdown, because remote surfaces (the desktop app, vscode, mobile) draw a non-https Link as text but keep `file:` links in Markdown. It points to the launcher, not to `index.html?s=`: a shell association drops the query of a `file:` link. The terminal band has no link. Where nothing opens, open `office/open-<session>.html` by hand.
+The `[open file]` link is Markdown, because remote surfaces (the desktop app, vscode, mobile) draw a non-https Link as text but keep `file:` links in Markdown. It points to the launcher, not to `index.html?s=`: a shell association drops the query of a `file:` link. The desktop band shows the link only after an Office open has failed in this session, since the button opens the page. The terminal band never has it. Where nothing opens, open `office/open-<session>.html` by hand.
 
 Not simulated in tests: a POSIX plugin root with the macOS and Linux openers (the harness root is a Windows path), and the vscode and mobile surfaces.
 

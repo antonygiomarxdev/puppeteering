@@ -25,21 +25,29 @@ test('the band above the prompt counts the team and offers the office', async ($
   await ui.unmount()
 })
 
-test('the desktop band offers the Office button and a file link to the launcher; the terminal band has no link', async ($, on) => {
+test('the desktop band has no file link until an open fails, then it has one; the terminal band never has it', async ($, on) => {
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 'abc-123' }))
   on('fs.write', () => ({ value: undefined }))
   on('clock.every', () => ({ deny: 'no timer in this test' }))
   on('clock.now', () => ({ value: 1000 }))
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => (toasts.push(e.text), { value: undefined }))
+  on('process.run', () => ({ deny: 'cannot start' }))
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 
   const ui = await $.ui.mount({ plugin: 'puppet-monitor', surface: 'desktop', component: 'AbovePrompt', props: {} })
   expect(await ui.find({ type: 'Button', text: /Office/ })).toBeTruthy()
-  // The link opens in a remote surface's browser as is, so it names the launcher, which adds the key.
-  expect(await ui.find({ type: 'Markdown', text: /office\/open-abc-123\.html\)/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Markdown', text: /open file/ }).catch(() => undefined)).toBeFalsy()
+  await ui.press({ key: 'office' })
+  expect(toasts.at(-1)).toContain('cannot start')
   await ui.unmount()
+  // The failed open is kept in the board, so the band drawn after it offers the link to the launcher.
+  const after = await $.ui.mount({ plugin: 'puppet-monitor', surface: 'desktop', component: 'AbovePrompt', props: {} })
+  expect(await after.find({ type: 'Markdown', text: /office\/open-abc-123\.html\)/ })).toBeTruthy()
+  await after.unmount()
   const terminal = await $.ui.mount({ plugin: 'puppet-monitor', surface: 'terminal', component: 'AbovePrompt', props: { bodyColumns: 100 } })
   expect(await terminal.find({ type: 'Markdown', text: /open file/ }).catch(() => undefined)).toBeFalsy()
   await terminal.unmount()

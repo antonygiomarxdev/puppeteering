@@ -91,6 +91,8 @@ export type Board = {
   agents: Agent[]
   /** Who left since the last look, for a minute. */
   departed?: Departed[]
+  /** An Office open failed in this session: the desktop band then offers the [open file] link. */
+  officeFailed?: boolean
   isLeadBusy: boolean
   now: number
 }
