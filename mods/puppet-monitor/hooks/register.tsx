@@ -136,7 +136,7 @@ export const register: Register = on => {
     else if (worked[e.agentId]) {
       worked[e.agentId] = 0
       // The final answer's first sentence is what the coordinator hears.
-      const final = typeof e.text === 'string' ? sentences(e.text)[0] : undefined
+      const final = sentences(e.answer)[0]
       await report($, e.agentId, final ?? (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.')
     }
     return next(e)
