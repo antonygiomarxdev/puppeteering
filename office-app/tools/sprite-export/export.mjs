@@ -40,7 +40,7 @@ const critterOrange = mkCritter(${JSON.stringify(crit)})
 const critterGold = mkCritter(${JSON.stringify(gold)})
 const critterOrangeBare = mkCritter(${JSON.stringify(bare(crit))})
 const critterGoldBare = mkCritter(${JSON.stringify(bare(gold))})
-${['exporter.js', 'characters.js', 'main.js'].map(f => readFileSync(join(here, f), 'utf8')).join(String.fromCharCode(10))}
+${['exporter.js', 'characters.js', 'seasons.js', 'main.js'].map(f => readFileSync(join(here, f), 'utf8')).join(String.fromCharCode(10))}
 </script>`
 
 if (process.env.DUMP_HTML) writeFileSync(process.env.DUMP_HTML, html) // debugging: the page exactly as Chrome gets it

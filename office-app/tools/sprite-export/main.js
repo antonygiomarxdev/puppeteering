@@ -19,6 +19,9 @@ async function main() {
   await save('sprites', 'costumes', cos, 8)
   const byName = list => Object.fromEntries(list.map(f => [f.name, f.canvas]))
   await post('scratch', 'preview-costumes-all.png', png(costumePreview(byName(orange), byName(costumes))))
+  const themes = {}
+  for (const [name, t] of Object.entries(THEMES)) { themes[name] = THEME_FRAMES(t); await save('sprites', 'theme-' + name, pack(themes[name], 140, 'theme-' + name + '.png'), 8) }
+  await post('scratch', 'preview-themes.png', png(themePreview(byName(orange), themes)))
   const ts = tileset()
   await post('sprites', 'tileset.png', png(ts.sheet)); await post('sprites', 'tileset.json', JSON.stringify(ts.meta, null, 2))
   await post('scratch', 'preview-tileset.png', png(preview(ts.sheet, 8)))
