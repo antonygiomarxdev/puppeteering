@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="ONBOARDING.md">Onboarding</a> ·
   <a href="GUIDE.md">Guide</a> ·
   <a href="LESSONS.md">Lessons</a> ·
   <a href="REFERENCES.md">Official docs</a> ·
@@ -46,7 +47,7 @@ You need both. The first turns teams on. The second gives you the shared task li
 ```markdown
 ## Agent teams
 
-Before leading a team, read `~/dev/puppeteering/GUIDE.md`.
+Before leading a team, read `~/dev/puppeteering/ONBOARDING.md`, then `~/dev/puppeteering/GUIDE.md`.
 A project's own document holds only what is specific to it.
 ```
 
@@ -64,11 +65,12 @@ A project's own document holds only what is specific to it.
 
 | File | What it is |
 | --- | --- |
+| [`ONBOARDING.md`](ONBOARDING.md) | Start here: setup, leading a team, reading the office, working on this repo |
 | [`GUIDE.md`](GUIDE.md) | The way of working: setup, roles, the pile, review, gates, cost and limits |
 | [`LESSONS.md`](LESSONS.md) | What failed in real runs, and what changed because of it |
 | [`REFERENCES.md`](REFERENCES.md) | The official Claude Code docs for each topic, and further reading |
 | [`setup/`](setup) | The settings to copy |
-| [`mods/puppet-monitor/`](mods/puppet-monitor) | A pane that shows who is working on what, and what has gone quiet |
+| [`mods/puppet-monitor/`](mods/puppet-monitor) | The monitor: an office in the browser and a band above the prompt that show what every agent is doing, and what is stuck |
 
 ## Contributing
 
