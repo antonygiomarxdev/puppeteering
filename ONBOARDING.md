@@ -177,6 +177,7 @@ To see the office without a live team, write a fake `state-x.js` next to `index.
 | No band above the prompt | The mod is not installed or not enabled: `/plugin` |
 | `TaskList` does not answer | `CLAUDE_CODE_ENABLE_TODO_TOOLS` is not set |
 | A teammate redoes a finished task | It read a new message as its old task. Name the new task by number and subject |
+| No thinking text on a card | A mod receives thinking blocks with empty text in Claude Code 2.1.327, even with `showThinkingSummaries`. The card shows that an agent is thinking and for how long, not what |
 | Code Mode does not start | [Code Mode](https://code.claude.com/docs/en/code-mode) refuses "an installed mod that checks tool calls", and this mod hooks `tool.call`. Start `claude` with `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE=1` (from that page) and read the line at the top of the session. Whether this mod blocks it is not settled |
 
 Not verified yet: teammates in split panes, Code Mode with the mod installed, and macOS and Linux.

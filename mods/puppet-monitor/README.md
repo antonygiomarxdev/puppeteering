@@ -48,7 +48,7 @@ It adds one sentence to the prompt of every agent spawned while it is loaded, as
 
 ## What it cannot show
 
-- **Thinking.** In our runs the thinking blocks reached the mod with no text, even with `showThinkingSummaries: true`. That was in a running session and in a new `claude -p` process; a new interactive session is not tested. If text arrives, the office shows it with the rest.
+- **What an agent thinks.** The office shows *that* an agent is thinking, and for how long, in a Thinking line of its own, apart from what it says. It cannot show the words. In Claude Code 2.1.327 a `turn.step` thinking chunk is `{ kind, index, text, ref }` with `text` empty, and the transcript row a mod sees in `session.append` holds `thinking: ""` beside a signature of about 1,200 characters. No summary field exists, and `showThinkingSummaries: true` changed nothing. Checked on Windows in the terminal, with a new `claude -p` run at high effort; the desktop app is not checked. If text ever arrives, the Thinking line shows it.
 - **Progress as a percentage.** No event reports it. You see elapsed time, not time left.
 - **Teammates in a terminal pane of their own.** Going by the API types, only their status reaches this session.
 - **Proof.** `STUCK` can be a slow, healthy command, and `LOOPING` can be a poll. An alert says where to look.

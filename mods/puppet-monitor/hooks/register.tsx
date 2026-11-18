@@ -2,16 +2,17 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, deliver, departures, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, deliver, departures, endCall, endThought, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, startThought, streamThought, summarize } from './theatre'
 
 const TICK_MS = 1_000
+const STREAM_MS = 1_000
 // Agents rarely write between steps unless asked, and this is what the office shows of them.
 const NARRATE = '\n\nBefore each tool call, write one short sentence saying what you are about to do and why. A monitor shows it to the person running this team.'
 
 const EMPTY: Board = { loops: {}, reports: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
 
 // Change the tag when a field changes: it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-6' })
+const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-7' })
 
 const loopOf = (state: Board, id: string, now: number): Loop => state.loops[id] ?? { running: [], lastAt: now, said: [] }
 
@@ -226,15 +227,39 @@ export const register: Register = on => {
         return push(moved, id, { type: 'said', at: now, text: text.trim() })
       })
     }
+    // Thinking is kept apart from what the agent says: its start is saved at once, so the page counts it live, and its text when the block closes.
+    let thought: string | undefined
+    let seen = 0
+    const closeThought = async () => {
+      if (thought === undefined) return
+      const done = thought
+      thought = undefined
+      const now = await $.clock.now()
+      await update($, board, state => endThought({ ...state, now }, id, done, now))
+    }
     const stream = next(e)
     let text = ''
     while (true) {
       const { value, done } = await stream.next()
       if (done) {
+        await closeThought()
         await save(text)
         return value
       }
-      if (value.kind === 'text' || value.kind === 'thinking') text += value.text
+      if (value.kind === 'thinking') {
+        const now = await $.clock.now()
+        if (thought === undefined) {
+          thought = ''
+          seen = now
+          await update($, board, state => startThought({ ...state, now }, id, now))
+        } else if (now - seen >= STREAM_MS) {
+          // At most once a second: a block cut short then reads as lasting until here.
+          seen = now
+          await update($, board, state => streamThought(state, id, now))
+        }
+        thought += value.text
+      } else if (value.kind !== 'engine') await closeThought()
+      if (value.kind === 'text') text += value.text
       if (value.kind === 'tool') {
         await save(text)
         text = ''

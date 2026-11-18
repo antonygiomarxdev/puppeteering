@@ -11,11 +11,14 @@ export type InnerCall = { id: string; tool: string; what: string; ok?: boolean }
 export type Entry =
   | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean; inner?: InnerCall[] }
   | { type: 'said'; at: number; text: string }
+  | { type: 'thought'; at: number; end: number; text?: string }
   | { type: 'sent'; at: number; to: string; text: string }
   | { type: 'received'; at: number; from: string; text: string }
   | { type: 'task'; at: number; id: string; subject: string; kind: 'taken' | 'done' }
   | { type: 'report'; at: number; text: string }
 export type FileTouch = { path: string; count: number }
+/** A thinking block: `since` it began, `end` once it closed; `text` only if the engine sent any. */
+export type Thought = { since: number; at: number; end?: number; text?: string }
 
 export type Desk = {
   id: string
@@ -30,6 +33,8 @@ export type Desk = {
   alert?: Alert
   task?: string
   said?: string
+  /** The last thinking block, apart from `said`. */
+  thinking?: Thought
   doing: string
   report?: Report
   /** The current call's kind, and when it started. Undefined between calls. */
@@ -46,7 +51,7 @@ export type Desk = {
   files?: FileTouch[]
 }
 
-export type Lead = { busy: boolean; alert?: Alert; said?: string; doing: string; kind?: ToolKind; task?: string; timeline?: Entry[]; files?: FileTouch[] }
+export type Lead = { busy: boolean; alert?: Alert; said?: string; thinking?: Thought; doing: string; kind?: ToolKind; task?: string; timeline?: Entry[]; files?: FileTouch[] }
 export type BoardTask = { id: string; subject: string; status: string; owner?: string; blocked: boolean }
 
 export type OfficeState = {

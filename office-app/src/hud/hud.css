@@ -46,6 +46,12 @@ main { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 0 12px 12px; }
 .tag { background: var(--lead); color: #fff; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 .said, .report { color: var(--dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .report { color: #5a5190; }
+/* Thinking is not speech: italic, dimmer, a 💭, never in quotes. */
+.thinking, .thought { color: var(--dim); font-style: italic; opacity: .85; }
+.thinking { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.thinking.clamp { -webkit-line-clamp: 4; white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 6px; }
+.thinking.clamp.open { display: block; }
+.drawer button.more { margin-left: 6px; font: inherit; font-size: 11px; font-style: normal; color: var(--lead); padding: 0; }
 .drawer { position: absolute; inset: 0; background: var(--panel); border: 2px solid var(--lead); border-radius: 10px; padding: 10px; overflow-y: auto; z-index: 5; font-size: 12px; }
 .drawer .head { display: flex; align-items: center; gap: 6px; }
 .drawer button { margin-left: auto; border: 0; background: none; font-size: 18px; cursor: pointer; color: var(--dim); }

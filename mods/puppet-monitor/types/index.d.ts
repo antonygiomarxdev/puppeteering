@@ -11,6 +11,9 @@ export type Running = {
   inner?: number
 }
 
+/** A thinking block: its text, if any reached the mod, apart from what the agent says. */
+export type Thought = { since: number; at: number; end?: number; text?: string }
+
 /** One loop: the lead, a subagent or a teammate. */
 export type Loop = {
   running: Running[]
@@ -20,6 +23,8 @@ export type Loop = {
   said: string[]
   /** The call it just made and how many times in a row. */
   repeat?: { sig: string; count: number }
+  /** The last thinking block: `since` it began, `end` once it closed. The engine sends its text empty so far, so `text` is often absent. */
+  thinking?: Thought
   /** The last call that failed; cleared by its next success. */
   lastError?: { at: number; text: string }
 }
@@ -64,6 +69,7 @@ export type InnerCall = { id: string; tool: string; what: string; ok?: boolean }
 export type Entry =
   | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean; inner?: InnerCall[] }
   | { type: 'said'; at: number; text: string }
+  | { type: 'thought'; at: number; end: number; text?: string }
   | { type: 'sent'; at: number; to: string; text: string }
   | { type: 'received'; at: number; from: string; text: string }
   | { type: 'task'; at: number; id: string; subject: string; kind: 'taken' | 'done' }

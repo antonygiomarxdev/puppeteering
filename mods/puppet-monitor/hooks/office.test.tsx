@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 import { launcherUrl, officeUrl } from './register'
 
@@ -183,4 +183,54 @@ test('after a reload with no session.start, the Office button still sets the key
   expect(writes.some(path => /open-zzz-9\.html$/.test(path))).toBe(true)
   expect(argvs[0].at(-1)).toMatch(/open-zzz-9\.html$/)
   await ui.unmount()
+})
+
+// Runs model steps through the mod, each a list of chunks as the engine streams them, then one tick: returns the office state it writes.
+async function officeAfter($: any, on: any, steps: object[][]) {
+  const clock = mock.clock(on, { now: 1000 })
+  on('command.register', (_: unknown, e: { name: string }) => ({ value: { command: e.name } }))
+  on('session.start', (_: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 'think-1' }))
+  on('agent.list', () => ({ value: [] }))
+  on('ui.status', () => ({ value: undefined }))
+  const states: string[] = []
+  on('fs.write', (_: unknown, e: any) => (/state-think-1\.js$/.test(e.path) && states.push(e.text), { value: undefined }))
+  let chunks: object[] = []
+  on('turn.step', async function* () {
+    for (const chunk of chunks) yield chunk
+    return { turnId: 't1', index: 0, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  for (const one of steps) {
+    chunks = one
+    const stream = $.turn.step({ turnId: 't1', index: 0, model: 'test', messageCount: 1 })
+    while (!(await stream.next()).done) {}
+  }
+  await clock.advance(1000)
+  return JSON.parse(states.at(-1)!.replace(/^window\.office\(/, '').replace(/\)\s*$/, ''))
+}
+
+const types = (timeline: { type: string }[]) => timeline.map(entry => entry.type)
+
+test('a thinking chunk sets thinking and leaves said alone; a text chunk sets said and leaves thinking alone', async ($, on) => {
+  const office = await officeAfter($, on, [[{ kind: 'thinking', index: 0, text: 'Pondering the sum.' }, { kind: 'text', index: 1, text: 'The answer is 400.' }]])
+  expect(office.lead.said).toBe('The answer is 400.')
+  expect(office.lead.thinking).toEqual({ since: 1000, at: 1000, end: 1000, text: 'Pondering the sum.' })
+  // Newest first: the said entry is saved when the step ends, after the thought closed.
+  expect(types(office.lead.timeline)).toEqual(['said', 'thought'])
+  expect(JSON.stringify(office.lead.timeline[0])).not.toContain('Pondering')
+})
+
+test('a text-only step sets no thinking', async ($, on) => {
+  const office = await officeAfter($, on, [[{ kind: 'text', index: 0, text: 'Only words here.' }]])
+  expect(office.lead.said).toBe('Only words here.')
+  expect(office.lead.thinking).toBe(undefined)
+  expect(types(office.lead.timeline)).toEqual(['said'])
+})
+
+test('an empty thinking block, as the engine sends it, is still recorded as thinking with no text', async ($, on) => {
+  const office = await officeAfter($, on, [[{ kind: 'thinking', index: 0, text: '' }, { kind: 'thinking', index: 0, text: '' }, { kind: 'stop', stopReason: 'end_turn', usage: null }]])
+  expect(office.lead.thinking).toEqual({ since: 1000, at: 1000, end: 1000 })
+  expect(office.lead.said).toBe(undefined)
+  expect(types(office.lead.timeline)).toEqual(['thought'])
 })

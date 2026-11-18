@@ -1,8 +1,9 @@
-import type { Alert, Desk, Entry, FileTouch, Lead, ToolKind } from '../types'
+import type { Alert, Desk, Entry, FileTouch, Lead, Thought, ToolKind } from '../types'
 
 export const SELECT_EVENT = 'select-agent'
 export const LEAD_ID = 'lead'
 const TEN_MIN = 10 * 60_000
+const CUT_OFF_MS = 60_000
 
 // An older mod writes neither; treat both as optional.
 export type Extras = { timeline?: Entry[]; files?: FileTouch[] }
@@ -20,6 +21,8 @@ export type Card = {
   kind?: ToolKind
   since?: number
   said?: string
+  /** Kept apart from `said`: the card and the drawer each give it its own line. */
+  thinking?: Thought
   report?: Desk['report']
   alert?: Alert
   lastError?: Desk['lastError']
@@ -30,13 +33,13 @@ export type Card = {
 export const deskCard = (d: Desk): Card => ({
   id: d.id, name: d.name, role: d.type || d.description, lead: false,
   working: d.working, sleeping: d.sleeping, task: d.task, doing: d.doing, kind: d.kind, since: d.since,
-  said: d.said, report: d.report, alert: d.alert, lastError: d.lastError, blockedBy: d.blockedBy,
+  said: d.said, thinking: d.thinking, report: d.report, alert: d.alert, lastError: d.lastError, blockedBy: d.blockedBy,
   extras: { timeline: d.timeline, files: d.files },
 })
 
 export const leadCard = (l: Lead): Card => ({
   id: LEAD_ID, name: 'lead', role: 'team lead', lead: true,
-  working: l.busy, sleeping: false, task: l.task, doing: l.doing, kind: l.kind, said: l.said, alert: l.alert, extras: { timeline: l.timeline, files: l.files },
+  working: l.busy, sleeping: false, task: l.task, doing: l.doing, kind: l.kind, said: l.said, thinking: l.thinking, alert: l.alert, extras: { timeline: l.timeline, files: l.files },
 })
 
 /** Problems first (alert, recent error, blocked), then working, then idle, then sleeping. */
@@ -84,3 +87,19 @@ export function actionPhrase(kind: ToolKind | undefined, doing: string): string 
 
 /** The NOW phrase of a card; a sleeping agent has none, even if `doing` is stale. */
 export const cardAction = (c: Pick<Card, 'sleeping' | 'kind' | 'doing'>): string => (c.sleeping ? '' : actionPhrase(c.kind, c.doing))
+
+/** What a thought reads as: its text when the engine sent any, else how long the agent has thought, live while the block is open. */
+export function thinkingLine(t: Thought | undefined, now: number, working = true): string | undefined {
+  if (!t) return undefined
+  if (t.text) return t.text
+  if (t.end !== undefined) return `thought for ${elapsed(t.end - t.since)}`
+  // A block that never closed (a turn cut short) is not counted on forever: `at` is the last time the mod saw it stream.
+  return isCutOff(t, now, working) ? `thought for ${elapsed(t.at - t.since)}, cut off` : `thinking… ${elapsed(now - t.since)}`
+}
+
+/** An open thought whose agent stopped working, or that has not streamed for over a minute. */
+export const isCutOff = (t: Thought, now: number, working: boolean): boolean => t.end === undefined && (!working || now - t.at > CUT_OFF_MS)
+
+/** The card's Thinking line: a thought with text, or one still open on a working agent; an empty, closed one says nothing there. */
+export const cardThinking = (c: Pick<Card, 'thinking' | 'working' | 'sleeping'>, now: number): string | undefined =>
+  !c.thinking || c.sleeping || (!c.thinking.text && (c.thinking.end !== undefined || isCutOff(c.thinking, now, c.working))) ? undefined : thinkingLine(c.thinking, now, c.working)

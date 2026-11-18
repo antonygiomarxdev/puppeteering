@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, deliver, departures, endCall, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, endCall, endThought, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, startThought, streamThought, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -225,4 +225,25 @@ test('without a script running, a call is its own entry', () => {
   const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
   const board = startCall(startCall(base, 'a', { id: '1', tool: 'Read', doing: 'Read', startedAt: 1, kind: 'read' }), 'a', { id: '2', tool: 'Read', doing: 'Read', startedAt: 2, kind: 'read' })
   expect(board.timelines?.a.length).toBe(2)
+})
+
+test('a thinking block is live from its start until it closes, closes once, and never touches said', () => {
+  const board = { tasks: [], history: [], shells: [], reports: {}, agents: [], isLeadBusy: true, now: 0, loops: { lead: { ...idle, said: ['Hello there.'] } } }
+  const live = startThought(board, 'lead', 1000)
+  expect(live.loops.lead?.thinking).toEqual({ since: 1000, at: 1000 })
+  expect(office(live).lead.thinking?.end).toBe(undefined)
+  const closed = endThought(live, 'lead', '  ', 5000)
+  expect(closed.loops.lead?.thinking).toEqual({ since: 1000, at: 5000, end: 5000 })
+  expect(endThought(closed, 'lead', 'late', 6000)).toBe(closed)
+  expect(closed.loops.lead?.said).toEqual(['Hello there.'])
+  expect(closed.timelines?.lead).toEqual([{ type: 'thought', at: 1000, end: 5000 }])
+})
+
+test('a block still streaming moves its at; a closed one does not move', () => {
+  const board = { tasks: [], history: [], shells: [], reports: {}, agents: [], isLeadBusy: true, now: 0, loops: { lead: idle } }
+  const live = streamThought(startThought(board, 'lead', 1000), 'lead', 3000)
+  expect(live.loops.lead?.thinking).toEqual({ since: 1000, at: 3000 })
+  const closed = endThought(live, 'lead', '', 4000)
+  expect(streamThought(closed, 'lead', 9000)).toBe(closed)
+  expect(streamThought(board, 'lead', 9000)).toBe(board)
 })

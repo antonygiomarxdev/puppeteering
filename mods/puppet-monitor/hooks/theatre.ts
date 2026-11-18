@@ -1,5 +1,5 @@
 // What the board means: plain functions, no engine.
-import type { Agent, Board, Departed, Entry, Event, FileTouch, Loop, Report, Running, Task, ToolKind } from '../types'
+import type { Agent, Board, Departed, Entry, Event, FileTouch, Loop, Report, Running, Task, Thought, ToolKind } from '../types'
 
 export const LEAD = 'lead'
 export const HISTORY_KEPT = 200
@@ -16,6 +16,8 @@ const SAID_KEPT = 8
 export const TIMELINE_KEPT = 40
 export const FILES_KEPT = 20
 const TEXT_MAX = 200
+// The card's thinking text is clamped on the page; this only bounds the state file.
+const THOUGHT_MAX = 2_000
 
 export type Alert = { kind: 'loop' | 'stuck' | 'quiet'; text: string }
 
@@ -120,6 +122,29 @@ export function sentences(text: string): string[] {
 
 export function remember(said: string[], text: string): string[] {
   return [...said, ...sentences(text)].slice(-SAID_KEPT)
+}
+
+/** A thinking block begins: the loop is thinking from now, apart from what it says. */
+export function startThought(board: Board, id: string, now: number): Board {
+  const loop = board.loops[id] ?? { running: [], lastAt: now, said: [] }
+  return { ...board, loops: { ...board.loops, [id]: { ...loop, lastAt: now, thinking: { since: now, at: now } } } }
+}
+
+/** The open block is still streaming at `now`: the page reads a block cut short as lasting until its last `at`. */
+export function streamThought(board: Board, id: string, now: number): Board {
+  const loop = board.loops[id]
+  if (!loop?.thinking || loop.thinking.end !== undefined) return board
+  return { ...board, loops: { ...board.loops, [id]: { ...loop, lastAt: now, thinking: { ...loop.thinking, at: now } } } }
+}
+
+/** The block closes: its text (often empty, as the engine sends it) is kept, and a `thought` goes on the timeline. */
+export function endThought(board: Board, id: string, text: string, now: number): Board {
+  const loop = board.loops[id]
+  if (!loop?.thinking || loop.thinking.end !== undefined) return board
+  const clean = text.trim() ? text.trim().slice(0, THOUGHT_MAX) : undefined
+  const thinking = { ...loop.thinking, at: now, end: now, text: clean }
+  const moved = { ...board, loops: { ...board.loops, [id]: { ...loop, lastAt: now, thinking } } }
+  return push(moved, id, { type: 'thought', at: thinking.since, end: now, ...(clean ? { text: clean } : {}) })
 }
 
 export function shellEnd(content: unknown): { id: string; status: string } | undefined {
@@ -258,6 +283,8 @@ export type Desk = {
   alert?: Alert
   task?: string
   said?: string
+  /** The last thinking block, kept apart from `said`. */
+  thinking?: Thought
   doing: string
   report?: Report
   /** The current call's kind, and when it started. Undefined between calls. */
@@ -294,6 +321,7 @@ function deskOf(board: Board, agent: Agent, gone: boolean): Desk {
     alert: gone ? undefined : view.alert,
     task: view.task && `#${view.task.id} ${view.task.subject}`,
     said: view.loop?.said.at(-1),
+    thinking: gone ? undefined : view.loop?.thinking,
     doing: doingOf(view, board.now),
     report: board.reports[agent.id],
     kind: call?.kind,
@@ -317,6 +345,7 @@ export function office(board: Board, cwd = '') {
       busy: board.isLeadBusy,
       alert: board.isLeadBusy ? alertOf(lead, board.now) : undefined,
       said: lead?.said.at(-1),
+      thinking: lead?.thinking,
       doing: call ? `${callText(call)} ${elapsed(board.now - call.startedAt)}` : '',
       kind: call?.kind,
       task: leadTask && `#${leadTask.id} ${leadTask.subject}`,

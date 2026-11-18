@@ -3,7 +3,7 @@ import { EventBus } from '../EventBus'
 import type { Entry, HistoryEvent, OfficeState, ToolKind } from '../types'
 import { shadeOf } from './colors'
 import { eventLine, hhmm } from './format'
-import { cardAction, deskCard, elapsed, leadCard, LEAD_ID, SELECT_EVENT, sortCards, type Card } from './teamview'
+import { cardAction, cardThinking, deskCard, elapsed, leadCard, LEAD_ID, SELECT_EVENT, sortCards, thinkingLine, type Card } from './teamview'
 
 const TEN_MIN = 10 * 60_000
 const ICON: Record<ToolKind, string> = { write: '✎', read: '👁', shell: '>_', web: '🌐', message: '✉', board: '☰', agent: '⚙', code: '{}', other: '·' }
@@ -14,11 +14,24 @@ function useNow(): number {
   return now
 }
 
+// Long text is clamped to a few lines, with a control to read it all.
+function Clamped({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const long = text.length > 160 || text.includes('\n')
+  return (
+    <div className={`thinking clamp${open ? ' open' : ''}`}>
+      <span className="icon">💭</span> {text}
+      {long && <button className="more" onClick={() => setOpen(!open)}>{open ? 'less' : 'more'}</button>}
+    </div>
+  )
+}
+
 function CardView({ c, now, onOpen, selected }: { c: Card; now: number; onOpen: () => void; selected: boolean }) {
   const action = cardAction(c)
   const error = c.lastError && now - c.lastError.at < TEN_MIN ? c.lastError : undefined
   const report = c.report && now - c.report.at < TEN_MIN ? c.report : undefined
   const problem = c.alert || error || c.blockedBy?.length
+  const thinking = cardThinking(c, now)
   return (
     <li className={`card${problem ? ' problem' : ''}${selected ? ' selected' : ''}${c.sleeping ? ' asleep' : ''}`} onClick={onOpen}>
       {c.alert && <div className="bad">{c.alert.kind}: {c.alert.text}</div>}
@@ -30,13 +43,14 @@ function CardView({ c, now, onOpen, selected }: { c: Card; now: number; onOpen: 
         <span className="dim role">{c.role}</span>
       </div>
       <div className="task">{c.task ?? <span className="dim">no task</span>}</div>
-      <div className="now">
+      {(action || !thinking) && <div className="now">
         {action ? (
           <><span className="tag">NOW</span> {action}{c.since ? <span className="dim"> · {elapsed(now - c.since)}</span> : null}</>
         ) : (
           <span className="dim">{c.sleeping ? 'asleep' : c.working ? 'thinking' : 'idle'}</span>
         )}
-      </div>
+      </div>}
+      {thinking && <div className="thinking"><span className="icon">💭</span> {thinking}</div>}
       {c.said && <div className="said">“{c.said}”</div>}
       {report && <div className="report">report{report.to ? ` to ${report.to}` : ''}: {report.text}</div>}
     </li>
@@ -51,6 +65,7 @@ function Line({ t }: { t: Entry }) {
       return <>{time}<span className="icon">{ICON[t.kind] ?? ICON.other}</span> {t.what}{t.inner && <span className="dim"> · {t.inner.length} calls: {t.inner.map(c => c.what).join(', ')}</span>}{t.end !== undefined && <span className="dim"> · {elapsed(t.end - t.at)}</span>}{t.ok !== undefined && <span className={bad ? 'bad' : 'ok'}> {bad ? 'error' : 'ok'}</span>}</>
     }
     case 'said': return <>{time}<span className="icon">💬</span> {t.text}</>
+    case 'thought': return <span className="thought">{time}<span className="icon">💭</span> {t.text ?? `thought for ${elapsed(t.end - t.at)}`}</span>
     case 'sent': return <>{time}<span className="icon">✉</span> to {t.to}: {t.text}</>
     case 'received': return <>{time}<span className="icon">✉</span> from {t.from}: {t.text}</>
     case 'task': return <>{time}<span className="icon">☰</span> {t.kind} #{t.id} {t.subject}</>
@@ -62,6 +77,7 @@ function Drawer({ c, history, now, onClose }: { c: Card; history: HistoryEvent[]
   const { timeline, files } = c.extras
   const sorted = [...(timeline ?? [])].sort((a, b) => b.at - a.at)
   const messages = sorted.filter(t => t.type === 'sent' || t.type === 'received')
+  const thought = thinkingLine(c.thinking, now, c.working)
   const tasks = history.filter(e => e.who === c.name)
   return (
     <aside className="drawer">
@@ -72,6 +88,10 @@ function Drawer({ c, history, now, onClose }: { c: Card; history: HistoryEvent[]
       </div>
       <div className="task">{c.task ?? <span className="dim">no task</span>}</div>
       {c.since && cardAction(c) && <div className="now"><span className="tag">NOW</span> {cardAction(c)} · {elapsed(now - c.since)}</div>}
+      <h3>Thinking</h3>
+      {thought ? <Clamped text={thought} /> : <p className="dim">No thinking seen yet.</p>}
+      <h3>Said</h3>
+      {c.said ? <div className="said">“{c.said}”</div> : <p className="dim">Nothing yet.</p>}
       <h3>Timeline</h3>
       {timeline ? (
         <ul className="timeline">

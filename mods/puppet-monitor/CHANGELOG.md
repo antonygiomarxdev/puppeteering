@@ -5,12 +5,16 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 ## Unreleased
 
 ### Added
+- Thinking has its own place, apart from what an agent says. Each loop keeps its last thinking block (`thinking: { since, at, end?, text? }`) and its timeline gets a `thought` entry. The Team card shows a dim, italic 💭 line, "thinking… 4s" live while the block is open, and the drawer has a Thinking section with a "more" control for long text. The engine sends thinking without text today, so the line shows the time.
 - A REPL script (Code Mode) is one timeline entry, "Code: <first line>", with the calls it made nested under it; its desk shows "Running code (N calls)". The `code` tool kind is new.
 - The scene draws costumes per archetype, poses and marks per mood, and the coordinator's celebration once per completion.
 - Stable seats on the map: a compact grid of neighbourhoods, one per kind of agent. Leavers walk out through the door and newcomers walk in; nobody else moves.
 - The office extras walk the floor, pale and unnamed. `?extras=off` removes them.
 - Name pills that would collide stack instead of overlapping.
 - `office-app/tools/demo-video/record.mjs`: records a scripted 31 s demo of the office to MP4, landscape and square, with `--theme=`.
+
+### Changed
+- Thinking text no longer goes into `said`. The board's shape tag is `board-7`, so a state saved by an earlier version is dropped once.
 
 ### Fixed
 - The Office button opens the session's own page on Windows. The browser got the office without `?s=<key>` and read a stale state, because Windows drops the query of a file link. The mod now writes `office/open-<key>.html`, which redirects with the key, and opens that. It is also written on the first open after `/reload-plugins`.
