@@ -1,23 +1,6 @@
 # puppet-monitor
 
-A pane beside the chat that stages your team as a puppet theatre. The lead sits at the top, and threads drop to each agent that is working. At a glance you see each agent's task, what it says, what it is running, and whether it is stuck or looping.
-
-```
-                .-"""""""-.    LEAD working
-               /  \\\ ///  \
-              |   (@) (@)   |  "Review of #1 failed. I send it back to
-               \  vVvVvVv  /   builder-1 and carry on with the docs."
-                '-._____.-'    > Agent: fix the login 3s
-                     |
-   +-----------------+----------------+-----------------------+
-   |                                  |                       |
-( o o ) builder-1                ( - - ) builder-2       ( x x ) reviewer
-running                          ! STUCK 6m40s           ! LOOPING 6x
-#1 Fix the login                 #3 Write the docs       #2 Review the PR
-"The test fails because the      "I am installing the    "Checking the auth
-token expires first."            docs tooling first."    file again."
-> Bash: npm test 12s             > Bash: npm install     was Read: auth.ts
-```
+An office in the browser that shows your team at work, and a band above the prompt. At a glance you see each agent's task, what it says, what it is running, and whether it is stuck or looping.
 
 ## Install
 
@@ -26,24 +9,36 @@ token expires first."            docs tooling first."    file again."
 /plugin install puppet-monitor@puppeteering
 ```
 
-Send them as two prompts. A band above the prompt then counts your agents and shows any alert, with two buttons: **Office** and **Pane**. `/puppets` opens the pane too.
+Send them as two prompts. A band above the prompt then counts your agents and shows any alert, with an **Office** button.
 
-`/office` opens the same team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. An agent with no task in progress sleeps (eyes closed, "z" letters, screen off) and wakes when it takes one. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
+`/office` or the button opens the team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. An agent with no task in progress sleeps (eyes closed, "z" letters, screen off) and wakes when it takes one. The page reads `office/state-<session>.js`, which the mod rewrites every second, so it needs no server. The button opens `office/open-<session>.html`, a small page that redirects to the office with that session's key: Windows drops the `?s=` of a file link it hands to the browser.
 
-You read it; you do not have to operate it. With the pane focused, the number keys open an agent's whole conversation.
+You read it; you do not have to operate it.
 
-## What the signs mean
+## What the alerts mean
 
-| Sign | Means |
+| Alert | Means |
 | --- | --- |
-| `( o o )` | Working |
-| `( x x )` `! LOOPING` | The same call, with the same arguments, 3 times or more in a row |
-| `( - - )` `! STUCK` | One call has run for 5 minutes |
-| `( - - )` `! QUIET` | Working, with no activity for 2 minutes |
-| `waiting:` | Not working: these agents sit off the stage, in one line |
-| `[bg]` | A shell in the background, in red after 5 minutes |
+| `LOOPING` | The same call, with the same arguments, 3 times or more in a row |
+| `STUCK` | One call has run for 5 minutes |
+| `QUIET` | Working, with no activity for 2 minutes |
 
-Alerts also appear in the status line. With too many agents to stage, each gets one row, alerts first.
+Alerts show in the band, the status line and the office. A shell in the background turns red after 5 minutes.
+
+## Where it runs
+
+The button and `/office` open `office/open-<session>.html`, a launcher with no query, on every OS. The launcher redirects to the office with the session's key.
+
+| Where | How Office opens | If it fails |
+| --- | --- | --- |
+| Windows | `cmd /c start "" <launcher>`, found by a drive or UNC path in the plugin root | A toast `puppets: office failed: <reason>` |
+| macOS | `open <launcher>` | The same toast |
+| Linux | `xdg-open <launcher>` | The same toast |
+| Terminal (TUI) | The button runs the opener for the OS above | The toast; `/office` prints a `file:` link to the launcher |
+| Desktop app | The same opener. The app has no `session.info`, so the OS is read from the plugin root, and a rejected `process.run` counts as a failed opener | The toast, and a `[open file]` link in the band, which the app opens |
+| vscode, mobile and other remote surfaces | The band shows the `[open file]` Markdown link to the launcher: these surfaces draw a non-https Link as text, but keep `file:` links in Markdown | Open `office/open-<session>.html` by hand |
+
+Not simulated in tests: a POSIX plugin root with the macOS and Linux openers (the harness root is a Windows path), and the vscode and mobile surfaces.
 
 ## What it changes
 
@@ -51,7 +46,7 @@ It adds one sentence to the prompt of every agent spawned while it is loaded, as
 
 ## What it cannot show
 
-- **Thinking.** In our runs the thinking blocks reached the mod with no text, even with `showThinkingSummaries: true`. That was in a running session and in a new `claude -p` process; a new interactive session is not tested. If text arrives, the pane shows it with the rest.
+- **Thinking.** In our runs the thinking blocks reached the mod with no text, even with `showThinkingSummaries: true`. That was in a running session and in a new `claude -p` process; a new interactive session is not tested. If text arrives, the office shows it with the rest.
 - **Progress as a percentage.** No event reports it. You see elapsed time, not time left.
 - **Teammates in a terminal pane of their own.** Going by the API types, only their status reaches this session.
 - **Proof.** `STUCK` can be a slow, healthy command, and `LOOPING` can be a poll. An alert says where to look.

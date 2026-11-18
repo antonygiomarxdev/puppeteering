@@ -2,12 +2,10 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
-import type { Tone } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, deliver, departures, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
 
-const PANE = 'puppet-monitor'
 const TICK_MS = 1_000
-// Agents rarely write between steps unless asked, and this is what the pane shows of them.
+// Agents rarely write between steps unless asked, and this is what the office shows of them.
 const NARRATE = '\n\nBefore each tool call, write one short sentence saying what you are about to do and why. A monitor shows it to the person running this team.'
 
 const EMPTY: Board = { loops: {}, reports: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
@@ -16,8 +14,6 @@ const EMPTY: Board = { loops: {}, reports: {}, tasks: [], history: [], shells: [
 const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-6' })
 
 const loopOf = (state: Board, id: string, now: number): Loop => state.loops[id] ?? { running: [], lastAt: now, said: [] }
-
-const COLORS: Partial<Record<Tone, string>> = { alert: '#ff5a5a', ok: '#6bf0a0', lead: '#ffb000' }
 
 
 // An agent walks to whoever it writes to, and to the lead when its turn ends with its final answer.
@@ -45,6 +41,20 @@ async function keyOf($: EngineInterface, cwd: string): Promise<string> {
   return (hash >>> 0).toString(36)
 }
 
+// The page the Office button opens. Windows drops the query and hash of a file: URL it hands to the browser, so the page that opens carries no `?s=`: this one redirects with it.
+const LAUNCHER = (key: string) => `office/open-${key}.html`
+const launcherPage = (key: string) =>
+  `<!doctype html><meta charset="utf-8"><title>Office</title><script>location.replace('index.html?s=${key}'+location.hash)</script><a href="index.html?s=${key}">Open the office</a>\n`
+
+// Writes the per-session launcher (idempotent) and returns the key and the page the Office button opens.
+// The key is set at session.start; after /reload-plugins that may not fire again, so an open with no key sets it here.
+async function prepare($: EngineInterface, known: string, cwd: string): Promise<{ key: string; page: string }> {
+  const key = known || (await keyOf($, cwd))
+  const page = `${$.plugin.root}/${LAUNCHER(key)}`
+  await $.fs.write(page, launcherPage(key))
+  return { key, page }
+}
+
 // Opens the office page in the browser; undefined when it opened, else why it did not.
 async function openOffice($: EngineInterface, page: string): Promise<string | undefined> {
   try {
@@ -60,6 +70,7 @@ async function openOffice($: EngineInterface, page: string): Promise<string | un
         platform = undefined
       }
     }
+    if (windows) page = page.replace(/\//g, '\\')
     const openers = windows ? [['cmd', '/c', 'start', '', page]] : platform === 'macos' ? [['open', page]] : platform ? [['xdg-open', page]] : [['open', page], ['xdg-open', page]]
     let why: string | undefined = 'no opener'
     for (const argv of openers) {
@@ -86,6 +97,9 @@ export function officeUrl(root: string, key?: string): string {
   return key ? `${url}?s=${key}` : url
 }
 
+// The launcher as a file: link, which redirects with the key: the page a remote surface's link opens, since a bare index.html has no session.
+export const launcherUrl = (root: string, key: string): string => officeUrl(root).replace(/index\.html$/, `open-${key}.html`)
+
 export const register: Register = on => {
   let written = ''
   // This session's key, set at session.start: it names the state file and the office URL.
@@ -98,7 +112,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     cwd = e.cwd
     key = await keyOf($, cwd)
-    await $.command.register({ name: 'puppets', description: 'Show the lead and its agents at work, in a pane' })
+    await prepare($, key, cwd).catch(() => undefined)
     await $.command.register({ name: 'office', description: 'Open the office: each agent at its desk, in the browser' })
     $.clock.every(TICK_MS, async () => {
       const now = await $.clock.now()
@@ -128,17 +142,12 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'puppets' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Puppets' })
-    return { text: 'Puppets pane opened.' }
-  })
-
   on('command.run', { command: 'office' }, async $ => {
-    const url = officeUrl($.plugin.root, key)
-    return { text: (await openOffice($, url)) === undefined ? 'Office opened in the browser.' : `Open this in a browser: ${url}` }
+    const why = await prepare($, key, cwd).then(opened => ((key = opened.key), openOffice($, opened.page)), String)
+    return { text: why === undefined ? 'Office opened in the browser.' : `Open this in a browser: ${launcherUrl($.plugin.root, key)}` }
   })
 
-  // A row above the prompt: who is working, any alert, and the two ways to look.
+  // A row above the prompt: who is working, any alert, and the Office button.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     // Other mods share this slot: draw theirs below ours instead of replacing it.
     const below = await next(e).catch(() => undefined)
@@ -148,13 +157,8 @@ export const register: Register = on => {
     const { Box, Text, Button, Markdown } = $.ui.resolve(e)
     const width = e.surface === 'terminal' ? e.props.bodyColumns : undefined
     const office = async () => {
-      const why = await openOffice($, officeUrl($.plugin.root, key))
+      const why = await prepare($, key, cwd).then(opened => ((key = opened.key), openOffice($, opened.page)), String)
       if (why !== undefined) $.ui.toast(`puppets: office failed: ${why}`)
-    }
-    // Ask the engine rather than keep a flag: the person may have closed the pane by hand.
-    const pane = async () => {
-      if ((await $.ui.panes()).some(open => open.id === PANE)) return $.ui.close({ id: PANE })
-      await $.ui.open({ id: PANE, title: 'Puppets' })
     }
     const mine = (
       <Box flexDirection="row" alignItems="center" gap={2} width={width}>
@@ -167,9 +171,8 @@ export const register: Register = on => {
         <Button key="office" plain label="Office" onPress={office} />
         {e.surface !== 'terminal' && (
           // A remote surface draws a file: link as text unless it can open it, so the link is offered beside the button.
-          <Markdown text={`[open file](${officeUrl($.plugin.root, key)})`} />
+          <Markdown text={`[open file](${key ? launcherUrl($.plugin.root, key) : officeUrl($.plugin.root)})`} />
         )}
-        <Button key="pane" plain label="Pane" onPress={pane} />
       </Box>
     )
     return below ? (
@@ -341,37 +344,4 @@ export const register: Register = on => {
     }
     return next(e)
   }).catch(($, e, next) => next(e))
-
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
-    const state = await read($, board)
-    const cols = e.props.bodyColumns ?? 60
-    const rows = e.props.scroll?.bodyRows ?? e.viewport?.rows ?? 30
-    const openable = state.agents.filter(agent => !agent.id.includes('@')).slice(0, 9)
-
-    return (
-      <Box flexDirection="column">
-        {draw(state, cols, rows - (openable.length > 0 ? 2 : 0)).map(line => (
-          <Text wrap="truncate-end">
-            {line.map(seg => (
-              <Text color={COLORS[seg.tone]} dimColor={seg.tone === 'dim'} bold={seg.tone === 'bold'}>
-                {seg.text}
-              </Text>
-            ))}
-          </Text>
-        ))}
-        {openable.length > 0 && (
-          <Box flexDirection="row" flexWrap="wrap" gap={1}>
-            <Text dimColor>open:</Text>
-            {openable.map((agent, i) => (
-              <Button key={agent.id} hotkey={String(i + 1)} onPress={() => void $.ui.view({ agentId: agent.id })}>
-                {i + 1} {agent.name.slice(0, 14)}
-              </Button>
-            ))}
-          </Box>
-        )}
-      </Box>
-    )
-  })
 }
-

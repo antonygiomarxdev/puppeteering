@@ -1,11 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, endCall, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
-const text = (lines: { text: string }[][]) => lines.map(line => line.map(seg => seg.text).join('')).join('\n')
 
 test('a loop is quiet after two minutes with no call, not before', () => {
   expect(alertOf(idle, 1.9 * MIN)).toBe(undefined)
@@ -60,39 +59,6 @@ test('the end of a shell is read from the engine notice', () => {
   const notice = '<task-notification><task-id>b1</task-id><status>failed</status></task-notification>'
   expect(shellEnd([{ type: 'text', text: notice }])).toEqual({ id: 'b1', status: 'failed' })
   expect(shellEnd('nothing here')).toBe(undefined)
-})
-
-test('the stage shows every agent, and too many become one row each, alerts first', () => {
-  const agents = Array.from({ length: 8 }, (_, i) => ({ id: `a${i}`, name: `agent-${i}`, description: 'd', status: 'running' }))
-  const loops = { a5: { ...idle, repeat: { sig: 'x', count: 6 }, lastAt: 0 } }
-  const board = { tasks: [], history: [], shells: [], reports: {}, agents, loops, isLeadBusy: true, now: 0 }
-  const tall = text(draw(board, 120, 80))
-  for (const agent of agents) expect(tall).toContain(agent.name)
-  const short = draw(board, 120, 12)
-  expect(text(short)).toContain('LOOPING 6x')
-  expect(text(short).indexOf('agent-5')).toBeLessThan(text(short).indexOf('agent-0'))
-})
-
-test('no line is wider than the pane, at any width', () => {
-  const agents = Array.from({ length: 5 }, (_, i) => ({ id: `a${i}`, name: `a-long-agent-name-${i}`, description: 'x'.repeat(60), status: 'running' }))
-  const said = ['y'.repeat(200)]
-  const loops = Object.fromEntries(agents.map(a => [a.id, { ...idle, said }]))
-  const board = { tasks: [], history: [], shells: [], reports: {}, agents, loops: { ...loops, lead: { ...idle, said } }, isLeadBusy: true, now: 0 }
-  for (const cols of [40, 60, 90, 144]) {
-    for (const rows of [10, 80]) {
-      for (const line of text(draw(board, cols, rows)).split('\n')) expect(line.length).toBeLessThanOrEqual(cols)
-    }
-  }
-})
-
-test('who is not working waits in one line, off the stage', () => {
-  const agents = [
-    { id: 'a', name: 'worker', description: 'd', status: 'running' },
-    { id: 'b', name: 'done-one', description: 'd', status: 'idle' },
-  ]
-  const lines = text(draw({ tasks: [], history: [], shells: [], reports: {}, agents, loops: {}, isLeadBusy: true, now: 0 }, 100, 40)).split('\n')
-  expect(lines.find(line => line.includes('done-one'))).toBe('waiting: done-one')
-  expect(lines.some(line => line.includes('( o o ) worker'))).toBe(true)
 })
 
 test('the office lists each desk with its task, words and last report', () => {

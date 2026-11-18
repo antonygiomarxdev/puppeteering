@@ -13,7 +13,11 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 - `office-app/tools/demo-video/record.mjs`: records a scripted 31 s demo of the office to MP4, landscape and square, with `--theme=`.
 
 ### Fixed
+- The Office button opens the session's own page on Windows. The browser got the office without `?s=<key>` and read a stale state, because Windows drops the query of a file link. The mod now writes `office/open-<key>.html`, which redirects with the key, and opens that. It is also written on the first open after `/reload-plugins`.
 - A state file from an older mod no longer blanks the page: the page normalizes every state it reads. With no `?s=`, a stale state shows "no session picked".
+
+### Removed
+- The Pane, its button and `/puppets`. The office in the browser replaces it. The band keeps the count, the alert and the Office button.
 
 ## 0.2.0
 
