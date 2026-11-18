@@ -9,6 +9,9 @@ import { ATLASES, tilesPng } from './assets'
 import { pathfinder, walkGrid } from './grid'
 import { Labels, type Mark, type Pill } from './labels'
 import { shadeOf } from '../hud/colors'
+import { pickTheme } from './theme'
+import { ThemeLayer } from './themed'
+import { THEMES } from './themes'
 import { GR, IW, TOPH, ZH, layout, leadSeat, leadSpot, seatOf, standOf, type Plan } from './layout'
 
 const BG = '#eceaf4'
@@ -61,12 +64,15 @@ export class OfficeScene extends Phaser.Scene {
   private actors = new Map<string, Actor>()
   private lead?: Actor
   private labels!: Labels
+  private themed!: ThemeLayer
   private selected: string | null = null
   private ring!: Phaser.GameObjects.Ellipse
 
   constructor() { super('office') }
 
   preload() {
+    this.themed = new ThemeLayer(this, pickTheme(new Date(), location.search, THEMES))
+    this.themed.preload()
     for (const [key, png, json] of ATLASES) this.load.atlas(key, png, json as object)
     this.load.spritesheet('tiles', tilesPng, { frameWidth: 16, frameHeight: 16 })
   }
@@ -82,7 +88,7 @@ export class OfficeScene extends Phaser.Scene {
     // A click on empty floor clears the selection.
     this.input.on('pointerdown', (_p: unknown, over: unknown[]) => { if (!over.length) EventBus.emit(SELECT_EVENT, null) })
     this.scale.on('resize', () => this.fit())
-    const done = () => { EventBus.off(STATE_EVENT, on); EventBus.off(SELECT_EVENT, pick); this.labels.destroy() }
+    const done = () => { this.themed.destroy(); EventBus.off(STATE_EVENT, on); EventBus.off(SELECT_EVENT, pick); this.labels.destroy() }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, done)
     this.events.once(Phaser.Scenes.Events.DESTROY, done)
   }
@@ -128,21 +134,21 @@ export class OfficeScene extends Phaser.Scene {
       furniture(k % 3 === 1 ? 'pine' : 'tree', 4, y)
       furniture(k % 3 === 0 ? 'pine' : 'tree', ix + IW + 8, y + 18)
     }
-    tiles(ix, TOPH, IW, H - TOPH - 6, 'furniture', 'floor-planks', -900)
+    tiles(ix, TOPH, IW, H - TOPH - 6, 'furniture', 'floor-planks', -900).setData('kind', 'floor')
     // Walls: a lit top face on the back wall, thin sides, a base, and the shadow it throws on the floor.
-    tiles(ix - 4, 0, IW + 8, TOPH, 'tiles', T.wall, -800)
+    tiles(ix - 4, 0, IW + 8, TOPH, 'tiles', T.wall, -800).setData('kind', 'wall')
     tiles(ix - 4, 0, IW + 8, 16, 'tiles', T.wallTop, -799)
     tiles(ix - 4, TOPH - 16, IW + 8, 16, 'tiles', T.wallBase, -799)
     tiles(ix, TOPH, IW, 16, 'tiles', T.wallShadow, -890).setAlpha(0.35)
-    tiles(ix - 4, TOPH, 4, H - TOPH, 'tiles', T.wall, -800)
-    tiles(ix + IW, TOPH, 4, H - TOPH, 'tiles', T.wall, -800)
+    tiles(ix - 4, TOPH, 4, H - TOPH, 'tiles', T.wall, -800).setData('kind', 'wall')
+    tiles(ix + IW, TOPH, 4, H - TOPH, 'tiles', T.wall, -800).setData('kind', 'wall')
     tiles(ix - 4, H - 6, IW + 8, 6, 'tiles', T.wall, -800)
     // The entrance: a door in the bottom wall and a mat inside it.
     const { door } = L
     add(this.add.rectangle(door.x, door.y, door.w, door.h, 0x8a5a34).setOrigin(0, 0), -790)
     add(this.add.rectangle(door.x + 2, door.y + 1, door.w - 4, door.h - 1, 0xb5834e).setOrigin(0, 0), -789)
     add(this.add.rectangle(door.x - 2, door.y - 8, door.w + 4, 6, 0x9498e0).setOrigin(0, 0), -880)
-    for (let k = 0; k < 4; k++) furniture(PHASES[phaseOf()], ix + 10 + k * 78, 5, -700)
+    for (let k = 0; k < 4; k++) furniture(PHASES[phaseOf()], ix + 10 + k * 78, 5, -700).setData('kind', 'window')
     for (const p of L.pods) tiles(p.x, p.y, p.w, p.h, 'furniture', 'floor-tile', -500)
     // Chairs and desks: every slot has its chair, a vacant slot a desk of its own.
     const chair = (d: { x: number; y: number }) => furniture('chair', d.x + 6, d.y + 28, d.y + 10)
@@ -151,7 +157,7 @@ export class OfficeScene extends Phaser.Scene {
     L.desks.forEach(d => this.deskImages.push(add(this.add.image(d.x, d.y, 'furniture', 'desk-off'), d.y + 13)))
     // The meeting zone.
     const { mz, lz, zy } = L
-    tiles(mz.x, zy, mz.w, ZH, 'furniture', 'carpet-lilac', -500)
+    tiles(mz.x, zy, mz.w, ZH, 'furniture', 'carpet-lilac', -500).setData('kind', 'meeting')
     furniture('whiteboard', mz.x + 8, zy + 6)
     chair(L.leadDesk)
     this.leadDeskImage = add(this.add.image(L.leadDesk.x, L.leadDesk.y, 'furniture', 'desk-off'), L.leadDesk.y + 13)
@@ -160,7 +166,7 @@ export class OfficeScene extends Phaser.Scene {
     for (const cx of [30, 56, 82]) furniture('chair-small', mz.x + cx, zy + 58)
     furniture('plant-leafy', mz.x + 4, zy + ZH - 24)
     // The lounge.
-    tiles(lz.x, zy, lz.w, ZH, 'furniture', 'carpet-stripes', -500)
+    tiles(lz.x, zy, lz.w, ZH, 'furniture', 'carpet-stripes', -500).setData('kind', 'lounge')
     furniture('bamboo', lz.x + 6, zy + 4)
     furniture('ping-pong', lz.x + 40, zy + 8)
     furniture('armchair', lz.x + 94, zy + 8)
@@ -170,6 +176,7 @@ export class OfficeScene extends Phaser.Scene {
     furniture('sofa', lz.x + 18, zy + 98)
     furniture('plant-flowers', lz.x + 100, zy + 100)
     furniture('plant-palm', lz.x + 4, zy + 100)
+    this.themed.build(L, this.statics, add)
     this.fit()
   }
 
@@ -244,7 +251,7 @@ export class OfficeScene extends Phaser.Scene {
     if (roster.length !== this.n) {
       this.n = roster.length
       this.L = plan(roster.length)
-      this.find = pathfinder(walkGrid(this.L))
+      this.find = pathfinder(walkGrid(this.themed.blocked(this.L)))
       this.build()
     }
     this.walkers.tick(roster.map(a => ({ id: a.id, name: a.name, sleeping: a.sleeping, report: a.report })), dt, time)
@@ -270,6 +277,7 @@ export class OfficeScene extends Phaser.Scene {
       const typing = a.working && !a.alert && !w.asleep && w.mode === 'sit'
       const { frame, flip } = this.pose(w, typing, a.id, time)
       this.place(actor, w.x, w.y, frame, flip)
+      this.themed.hat(a.id, w.x, w.y, w.y, w.facing, w.mode === 'walk', flip)
       const wake = showsBang(w, time)
       this.marks(actor, w.x, w.y, time, Boolean(a.alert), wake, w.asleep && w.mode === 'sit')
       // Read at draw time: a walk that wakes the agent turns its screen back on in the same frame.
@@ -301,6 +309,8 @@ export class OfficeScene extends Phaser.Scene {
       pill: { name: 'coordinator', dot: s.lead.alert ? '#ff5a5a' : leadBusy ? '#3ddc84' : '#9a9aaa', sub: s.lead.doing || (leadBusy ? 'working' : 'idle') },
       bubble: leadBusy && s.lead.said && !listening ? s.lead.said : undefined,
     })
+    this.themed.keepHats(new Set(this.order))
+    this.themed.step(dt)
     this.labels.update(marks)
   }
 

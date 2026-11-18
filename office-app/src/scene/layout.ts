@@ -108,3 +108,24 @@ export const standOf = (L: Layout, i: number): Point => ({ x: L.desks[i]!.x + DE
 /** Where agent number `i` stands to report to the lead: in front of the meeting table. */
 export const leadSpot = (L: Layout, i: number): Point => ({ x: L.mz.x + 22 + (i % 3) * 44, y: L.zy + 104 + (Math.floor(i / 3) % 2) * 10 })
 export const leadSeat = (L: Layout): Point => seatOf(L.leadDesk)
+
+/** A spot for theme decor: the sprite's bottom-centre goes at (x, y). `foot` is the floor it takes: walk tiles it blocks. */
+export type Slot = Point & { depth: number; foot?: Rect }
+
+/**
+ * The named spots a theme may use. Wall and floor-corner slots are bare: off every furniture rect, clear of the routes
+ * (the corner decor's `foot` joins the walk grid). Desk, lounge and meeting slots sit ON furniture tops, never on a seat.
+ */
+export function anchorsOf(L: Layout): Record<'wall' | 'floor-corner' | 'desk' | 'lounge' | 'meeting', Slot[]> {
+  const { ix, mz, lz, zy } = L
+  const wall = [5, 77, 155, 233, 310].map(dx => ({ x: ix + dx, y: 20, depth: -698 }))
+  const corner = (x: number, y: number): Slot => ({ x, y, depth: y, foot: { x: x - 8, y: y - 5, w: 16, h: 5 } })
+  const on = (x: number, y: number, depth: number): Slot => ({ x, y, depth })
+  return {
+    wall,
+    'floor-corner': [corner(ix + 14, TOPH + 24), corner(ix + IW - 14, TOPH + 24)],
+    desk: L.desks.map(d => on(d.x + DESK_W - 9, d.y + 8, d.y + 13.5)),
+    lounge: [on(lz.x + 55, zy + 74, zy + 93.5), on(lz.x + 40, zy + 104, zy + 118.5), on(lz.x + 102, zy + 12, zy + 26.5), on(lz.x + 60, zy + 14, zy + 38.5)],
+    meeting: [on(mz.x + 34, zy + 70, zy + 88.5), on(mz.x + 100, zy + 70, zy + 88.5), on(mz.x + mz.w - 17, zy + 8, zy + 40.5), on(mz.x + 26, zy + 10, zy + 42.5)],
+  }
+}

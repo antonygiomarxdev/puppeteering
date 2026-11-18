@@ -17,3 +17,14 @@ export const ATLASES = [
 ] as const
 
 export { tilesPng }
+
+// Theme sheets are optional: whatever theme-<name>.png/json exists in the sprites folder is inlined, and a theme without one runs on placeholders.
+const themePngs = import.meta.glob('../../public/assets/sprites/theme-*.png', { query: '?inline', import: 'default', eager: true }) as Record<string, string>
+const themeJsons = import.meta.glob('../../public/assets/sprites/theme-*.json', { import: 'default', eager: true }) as Record<string, object>
+const nameOf = (path: string) => path.replace(/^.*\//, '').replace(/\.(png|json)$/, '')
+
+export const THEME_SHEETS: Record<string, { png: string; json: object }> = {}
+for (const [path, png] of Object.entries(themePngs)) {
+  const json = themeJsons[path.replace(/\.png$/, '.json')]
+  if (json) THEME_SHEETS[nameOf(path)] = { png, json }
+}
