@@ -28,7 +28,7 @@ token expires first."            docs tooling first."    file again."
 
 Send them as two prompts. A band above the prompt then counts your agents and shows any alert, with two buttons: **Office** and **Pane**. `/puppets` opens the pane too.
 
-`/office` opens the same team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
+`/office` opens the same team as an office in the browser: each agent is a small orange critter at its own desk, typing while it works, and the coordinator wears a crown. When an agent ends its turn or sends a message, it walks to whoever it reports to, says the first line in a bubble, and walks back. An agent with no task in progress sleeps (eyes closed, "z" letters, screen off) and wakes when it takes one. The page reads `office/state.js`, which the mod rewrites every second, so it needs no server.
 
 You read it; you do not have to operate it. With the pane focused, the number keys open an agent's whole conversation.
 

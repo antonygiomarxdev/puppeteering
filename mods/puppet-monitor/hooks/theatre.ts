@@ -1,7 +1,9 @@
 // What the board means, and how it is drawn: plain functions, no engine.
-import type { Agent, Board, Loop, Report, Task } from '../types'
+import type { Agent, Board, Event, Loop, Report, Task } from '../types'
 
 export const LEAD = 'lead'
+export const HISTORY_KEPT = 200
+const HISTORY_SHOWN = 50
 // A working agent with no activity for this long is flagged. It may be thinking: the flag says quiet.
 const QUIET_MS = 120_000
 // One call running this long is flagged, as it may be stuck.
@@ -25,7 +27,7 @@ export function elapsed(ms: number): string {
   return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}m`
 }
 
-const baseName = (path: string) => path.split('/').pop() ?? path
+const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path
 
 /** What a call is doing, in a few words, from the fields its tool takes. */
 export function summarize(e: Record<string, unknown>): string {
@@ -106,6 +108,19 @@ export function alerts(board: Board): string[] {
     if (!isWorking(agent.status)) continue
     const alert = alertOf(board.loops[agent.id], board.now)
     if (alert) out.push(`${agent.name} ${alert.text}`)
+  }
+  return out
+}
+
+/** What changed between two snapshots of the queue: taken, or done. `by` is who moved it, if known. */
+export function historyOf(before: Task[], after: Task[], at: number, by?: string): Event[] {
+  const out: Event[] = []
+  for (const task of after) {
+    const prev = before.find(known => known.id === task.id)
+    if (!prev || prev.status === task.status && prev.owner === task.owner) continue
+    const event = { at, id: task.id, subject: task.subject }
+    if (task.status === 'completed' && prev.status !== 'completed') out.push({ ...event, kind: 'done', who: by ?? task.owner })
+    else if (prev.status === 'pending' && (task.status === 'in_progress' || task.owner !== prev.owner)) out.push({ ...event, kind: 'taken', who: task.owner ?? by })
   }
   return out
 }
@@ -323,6 +338,8 @@ export type Desk = {
   name: string
   status: string
   working: boolean
+  /** No task in progress and no alert: the office draws it asleep. */
+  sleeping: boolean
   alert?: Alert
   task?: string
   said?: string
@@ -330,11 +347,14 @@ export type Desk = {
   report?: Report
 }
 
-export function office(board: Board) {
+// The project is the directory the session runs in: the office names it, so a page is not mistaken for another project's.
+export function office(board: Board, cwd = '') {
   const lead = board.loops[LEAD]
   const leadTask = taskOf(board, LEAD, LEAD)
+  const nameOf = (taker?: string) => (taker === LEAD ? LEAD : board.agents.find(agent => agent.id === taker || agent.name === taker)?.name ?? taker)
   const call = lead?.running.at(-1)
   return {
+    project: { name: baseName(cwd), cwd },
     lead: {
       busy: board.isLeadBusy,
       alert: board.isLeadBusy ? alertOf(lead, board.now) : undefined,
@@ -349,6 +369,7 @@ export function office(board: Board) {
         name: agent.name,
         status: agent.status,
         working: view.working,
+        sleeping: !view.task && !view.alert,
         alert: view.alert,
         task: view.task && `#${view.task.id} ${view.task.subject}`,
         said: view.loop?.said.at(-1),
@@ -357,5 +378,12 @@ export function office(board: Board) {
       }
     }),
     tasks: { done: board.tasks.filter(task => task.status === 'completed').length, total: board.tasks.length },
+    // The queue on the wall: every task, and who took it, by the name the office shows.
+    board: board.tasks.map(task => {
+      const taker = task.owner ?? task.by
+      return { id: task.id, subject: task.subject, status: task.status, owner: nameOf(taker), blocked: task.blockedBy.length > 0 }
+    }),
+    // The newest first, the last few: who took or finished each task, by the name the office shows.
+    history: board.history.slice(-HISTORY_SHOWN).reverse().map(event => ({ ...event, who: nameOf(event.who) })),
   }
 }
