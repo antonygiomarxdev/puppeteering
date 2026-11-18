@@ -2,6 +2,12 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a reviewer's mutant is a write
+
+A builder and a reviewer worked on different tasks that named the same file. The reviewer was not meant to edit it, but it proved a test with hand mutants on the live file, then restored the file from its own backup. That restore wiped the builder's edits, which had landed in between. The builder saw its changes vanish, stopped, and asked who owned the file. The test runs taken during the swaps proved nothing, because they had run against the mutant.
+
+Changed: a mutant runs on a copy of the code, never on the live file, while another writer is at work. A review now waits for every task that writes its files, not only the one it reviews.
+
 ## 2026-11: a team with no task list is subagents
 
 A team ran for a day with zero tasks in its shared list. On newer models the Task tools are off by default, and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` does not turn them on. The person running it noticed before the lead did: the agents looked like subagents, because they nearly were.
