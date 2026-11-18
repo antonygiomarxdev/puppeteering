@@ -2,6 +2,9 @@
 // stateAt(t, t0) is pure: t is story seconds, t0 the wall-clock ms at which t = 0, so every `at` is absolute.
 export const DURATION = 31
 
+// The stuck beat: with --zoom-map the recording zooms in on this agent from `from` to `to` (story seconds).
+export const ZOOM = { from: 16, to: 20, who: 'builder-2' }
+
 // Click the Team card of an agent / close its drawer at these story times.
 export const CLICKS = [
   { t: 20, select: 'builder-2' },
