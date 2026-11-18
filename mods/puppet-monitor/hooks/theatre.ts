@@ -1,5 +1,5 @@
 // What the board means, and how it is drawn: plain functions, no engine.
-import type { Agent, Board, Loop, Task } from '../types'
+import type { Agent, Board, Loop, Report, Task } from '../types'
 
 export const LEAD = 'lead'
 // A working agent with no activity for this long is flagged. It may be thinking: the flag says quiet.
@@ -139,7 +139,7 @@ const FACES: Record<string, string> = { loop: '( x x )', stuck: '( - - )', quiet
 
 type View = { agent: Agent; loop?: Loop; alert?: Alert; task?: Task; working: boolean }
 
-function viewOf(board: Board, agent: Agent): View {
+export function viewOf(board: Board, agent: Agent): View {
   const loop = board.loops[agent.id]
   const working = isWorking(agent.status)
   return { agent, loop, working, alert: working ? alertOf(loop, board.now) : undefined, task: taskOf(board, agent.id, agent.name) }
@@ -148,7 +148,7 @@ function viewOf(board: Board, agent: Agent): View {
 const faceOf = ({ alert, working, agent }: View) =>
   FACES[alert?.kind ?? (working ? 'on' : agent.status === 'completed' ? 'done' : 'idle')]
 
-function doingOf({ agent, loop }: View, now: number): string {
+export function doingOf({ agent, loop }: View, now: number): string {
   // A teammate in a terminal pane of its own runs no loop here: only its status reaches this session.
   if (agent.id.includes('@')) return 'own pane: status only'
   const call = loop?.running.at(-1)
@@ -315,4 +315,47 @@ function footerLines(board: Board, cols: number): Line[] {
     out.push([{ text: fit(`tasks: ${done}/${board.tasks.length} done${next ? ` | waiting ${next}` : ''}`, cols), tone: 'dim' }])
   }
   return out
+}
+
+/** What the office page draws: plain data, written to state.js. */
+export type Desk = {
+  id: string
+  name: string
+  status: string
+  working: boolean
+  alert?: Alert
+  task?: string
+  said?: string
+  doing: string
+  report?: Report
+}
+
+export function office(board: Board) {
+  const lead = board.loops[LEAD]
+  const leadTask = taskOf(board, LEAD, LEAD)
+  const call = lead?.running.at(-1)
+  return {
+    lead: {
+      busy: board.isLeadBusy,
+      alert: board.isLeadBusy ? alertOf(lead, board.now) : undefined,
+      said: lead?.said.at(-1),
+      doing: call ? `${call.doing} ${elapsed(board.now - call.startedAt)}` : '',
+      task: leadTask && `#${leadTask.id} ${leadTask.subject}`,
+    },
+    agents: board.agents.map((agent): Desk => {
+      const view = viewOf(board, agent)
+      return {
+        id: agent.id,
+        name: agent.name,
+        status: agent.status,
+        working: view.working,
+        alert: view.alert,
+        task: view.task && `#${view.task.id} ${view.task.subject}`,
+        said: view.loop?.said.at(-1),
+        doing: doingOf(view, board.now),
+        report: board.reports[agent.id],
+      }
+    }),
+    tasks: { done: board.tasks.filter(task => task.status === 'completed').length, total: board.tasks.length },
+  }
 }

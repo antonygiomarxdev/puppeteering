@@ -1,28 +1,40 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Loop, Task } from '../types'
-import { LEAD, alerts, draw, moveTask, remember, shellEnd, signature, summarize } from './theatre'
+import { LEAD, alerts, draw, moveTask, office, remember, shellEnd, signature, summarize } from './theatre'
 import type { Tone } from './theatre'
 
 const PANE = 'puppet-monitor'
-const TICK_MS = 5_000
+const TICK_MS = 1_000
 // Agents rarely write between steps unless asked, and this is what the pane shows of them.
 const NARRATE = '\n\nBefore each tool call, write one short sentence saying what you are about to do and why. A monitor shows it to the person running this team.'
 
-const EMPTY: Board = { loops: {}, tasks: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
+const EMPTY: Board = { loops: {}, reports: {}, tasks: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
 
 // Change the tag when a field changes: it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-2' })
+const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-3' })
 
 const loopOf = (state: Board, id: string, now: number): Loop => state.loops[id] ?? { running: [], lastAt: now, said: [] }
 
 const COLORS: Partial<Record<Tone, string>> = { alert: '#ff5a5a', ok: '#6bf0a0', lead: '#ffb000' }
 
 
+// An agent walks to whoever it writes to, and to the lead when its turn ends with its final answer.
+async function report($: EngineInterface, id: string, text: string, to?: string) {
+  const at = await $.clock.now()
+  await update($, board, state => ({ ...state, reports: { ...state.reports, [id]: { at, text, to } } }))
+}
+
+// The office page polls this file, so it needs no server.
+const STATE = 'office/state.js'
+
 export const register: Register = on => {
+  let written = ''
+
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'puppets', description: 'Show the lead and its agents at work, in a pane' })
+    await $.command.register({ name: 'office', description: 'Open the office: each agent at its desk, in the browser' })
     void $.ui.open({ id: PANE, title: 'Puppets' })
 
     $.clock.every(TICK_MS, async () => {
@@ -38,8 +50,14 @@ export const register: Register = on => {
           status: agent.status,
         })),
       }))
-      const up = alerts(await read($, board))
+      const state = await read($, board)
+      const up = alerts(state)
       $.ui.status(up.length > 0 ? `puppets: ${up.join(', ')}` : undefined)
+      const text = `window.office(${JSON.stringify(office(state))})\n`
+      if (text !== written) {
+        written = text
+        await $.fs.write(`${$.plugin.root}/${STATE}`, text)
+      }
     })
 
     return next(e)
@@ -49,6 +67,20 @@ export const register: Register = on => {
     await $.ui.open({ id: PANE, title: 'Puppets' })
     return { text: 'Puppets pane opened.' }
   })
+
+  on('command.run', { command: 'office' }, async $ => {
+    const page = `${$.plugin.root}/office/index.html`
+    const { platform } = await $.session.info()
+    const argv =
+      platform === 'windows' ? ['cmd', '/c', 'start', '', page] : platform === 'macos' ? ['open', page] : ['xdg-open', page]
+    const { exitCode } = await $.process.run(argv)
+    return { text: exitCode === 0 ? `Office opened: ${page}` : `Open this in a browser: ${page}` }
+  })
+
+  on('session.send', async ($, e, next) => {
+    if (e.agentId) await report($, e.agentId, e.text.split('\n')[0] ?? '', e.to)
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('agent.spawn', ($, e, next) => next({ ...e, prompt: e.prompt + NARRATE })).catch(($, e, next) => next(e))
 
@@ -64,6 +96,7 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     if (!e.agentId) await update($, board, state => ({ ...state, isLeadBusy: false }))
+    else await report($, e.agentId, (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.')
     return next(e)
   })
 

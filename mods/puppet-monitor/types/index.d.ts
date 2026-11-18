@@ -34,8 +34,12 @@ export type Shell = {
 
 export type Agent = { id: string; name: string; description: string; status: string }
 
+/** An agent's last word to another: its final answer, or a message it sent. */
+export type Report = { at: number; text: string; to?: string }
+
 export type Board = {
   loops: Record<string, Loop>
+  reports: Record<string, Report>
   tasks: Task[]
   shells: Shell[]
   agents: Agent[]
