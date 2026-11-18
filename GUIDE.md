@@ -60,9 +60,12 @@ The lead fills the shared task list. Teammates take the next free task.
 - **A task** carries its brief, its files and how it is verified. A teammate does not inherit the lead's conversation.
 - **Dependencies** go on the task, because a blocked task is not self-claimed: a review waits for the push; a task that edits a file waits for the PR that also edits it.
 - **Give the lead's own tasks an owner**, or a teammate can claim them. Writing them down lets you see the whole queue with `Ctrl+T`.
-- **Name a role in the description**, such as "Builder." or "Reviewer.", and spawn each teammate with one instruction: take the lowest free task for your role.
+- **Name a role in the description**, such as "Builder." or "Reviewer.". With one teammate per role, spawn it with one instruction: take the lowest free task for your role.
+- **With several teammates of one role, assign by name before they start.** Set each task's owner before spawning, and name the task and its files in the spawn prompt. Tell the teammate not to claim other tasks and to stop when its own are done. An owner on the task alone did not stop a claim, and an owner set mid-run arrives too late.
+- **A teammate that creates a file stops if it already exists.** A Write result that says "updated", not "created", means another teammate wrote there first.
+- **One file per task and no messages between workers?** Fix each agent's file in its prompt and skip the shared list: a Workflow ran that way with no collisions.
 
-Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Not yet run: several teammates of one role competing for tasks. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
+Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Several of one role taking the lowest free task collided three times in one run, and the second write replaced the first; assigned by name in the spawn prompt, the next run wrote 24 files with none ([#5](https://github.com/antonygiomarxdev/puppeteering/issues/5)). Not yet known: whether claiming with `TaskUpdate` is atomic. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
 
 ## Files and worktrees
 
