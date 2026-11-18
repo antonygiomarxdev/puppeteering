@@ -103,7 +103,7 @@ export const launcherUrl = (root: string, key: string): string => officeUrl(root
 
 export const register: Register = on => {
   let written = ''
-  // This session's key, set at session.start: it names the state file and the office URL.
+  // This session's key, set at session.start and read again each tick: it names the state file and the office URL. /clear fires no session.start, so the tick is what sees a new session.
   let key = ''
   // The directory the session runs in: the office page names the project from it.
   let cwd = ''
@@ -117,6 +117,12 @@ export const register: Register = on => {
     await $.command.register({ name: 'office', description: 'Open the office: each agent at its desk, in the browser' })
     $.clock.every(TICK_MS, async () => {
       const now = await $.clock.now()
+      const fresh = await keyOf($, cwd)
+      if (fresh !== key) {
+        key = fresh
+        written = ''
+        await prepare($, key, cwd).catch(() => undefined)
+      }
       const agents = (await $.agent.list()).map(agent => ({
         id: agent.id,
         name: agent.name ?? agent.description ?? agent.type,

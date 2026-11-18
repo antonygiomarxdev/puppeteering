@@ -145,6 +145,36 @@ test('each session writes its own state file, and the Office button opens that s
   await ui.unmount()
 })
 
+test('after /clear, with no session.start, the next tick writes the new session\'s state file and Office opens its page', async ($, on) => {
+  const clock = mock.clock(on, { now: 1000 })
+  let sid = 'old-1'
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: sid }))
+  on('agent.list', () => ({ value: [] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('session.info', () => ({ value: { platform: 'windows' } }))
+  const writes: string[] = []
+  on('fs.write', (_, e) => (writes.push(e.path), { value: undefined }))
+  const argvs: string[][] = []
+  on('process.run', (_, e) => (argvs.push(e.argv), { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await clock.advance(1000)
+  expect(writes.some(path => /[\\/]office[\\/]state-old-1\.js$/.test(path))).toBe(true)
+
+  // /clear: the session id changes and no session.start fires.
+  sid = 'new-2'
+  await clock.advance(1000)
+  expect(writes.some(path => /[\\/]office[\\/]state-new-2\.js$/.test(path))).toBe(true)
+  expect(writes.some(path => /[\\/]office[\\/]open-new-2\.html$/.test(path))).toBe(true)
+
+  const ui = await $.ui.mount({ plugin: 'puppet-monitor', surface: 'terminal', component: 'AbovePrompt', props: { bodyColumns: 100 } })
+  await ui.press({ key: 'office' })
+  expect(argvs[0].at(-1)).toMatch(/office[\\/]open-new-2\.html$/)
+  await ui.unmount()
+})
+
 test('with no session id, the key is a filename-safe hash of the directory', async ($, on) => {
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))

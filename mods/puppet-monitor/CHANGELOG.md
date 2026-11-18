@@ -18,6 +18,7 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 - Thinking text no longer goes into `said`. The board's shape tag is `board-7`, so a state saved by an earlier version is dropped once.
 
 ### Fixed
+- After `/clear` the mod writes the new session's state file and the Office button opens its page. `/clear` fires no `session.start`, so the tick now re-reads the session key.
 - A call that Code Mode reports twice is nested under its script once, so a script reads "Code: 1 calls" for one read.
 - The Office button opens the session's own page on Windows. The browser got the office without `?s=<key>` and read a stale state, because Windows drops the query of a file link. The mod now writes `office/open-<key>.html`, which redirects with the key, and opens that. It is also written on the first open after `/reload-plugins`.
 - A REPL script's calls are nested under its entry in the Code Mode timeline. The mod starts the entry from the REPL's tool-use chunk and ends it when its result arrives. Before, each inner call was listed flat, and the desk never read "Running code".
