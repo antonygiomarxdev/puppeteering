@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, deliver, departures, endCall, endThought, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, startThought, streamThought, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, startThought, streamThought, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -246,4 +246,35 @@ test('a block still streaming moves its at; a closed one does not move', () => {
   const closed = endThought(live, 'lead', '', 4000)
   expect(streamThought(closed, 'lead', 9000)).toBe(closed)
   expect(streamThought(board, 'lead', 9000)).toBe(board)
+})
+
+test('a REPL script is one entry: its calls nest under it while it runs, and its result ends it', () => {
+  const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
+  let board = startCall(base, 'lead', { id: 'toolu_1', tool: 'REPL', doing: 'Code: script', startedAt: 1, kind: 'code' })
+  for (const id of ['repl_a', 'repl_b', 'repl_c']) board = startCall(board, 'lead', { id, tool: 'Read', doing: `Read: ${id}`, startedAt: 2, kind: 'read' })
+  expect(office({ ...board, now: 7 }, '/p').lead.doing).toContain('Running code (3 calls)')
+  board = endScripts(board, [{ type: 'tool_result', tool_use_id: 'toolu_1', is_error: false }], 9)
+  const line = board.timelines?.lead ?? []
+  expect(line).toHaveLength(1)
+  expect(line[0]).toMatchObject({ what: 'Code: 3 calls', end: 9, ok: true })
+  expect(line[0].type === 'call' && line[0].inner).toHaveLength(3)
+  expect(board.loops.lead.running).toEqual([])
+})
+
+test('a tool_result for a call that is not a script changes nothing, and an error result fails the script', () => {
+  const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
+  const board = startCall(base, 'lead', { id: 'r1', tool: 'Read', doing: 'Read: a.md', startedAt: 1, kind: 'read' })
+  expect(endScripts(board, [{ type: 'tool_result', tool_use_id: 'r1' }], 5)).toBe(board)
+  const script = startCall(base, 'lead', { id: 'toolu_2', tool: 'REPL', doing: 'Code: script', startedAt: 1, kind: 'code' })
+  const failed = endScripts(script, [{ type: 'tool_result', tool_use_id: 'toolu_2', is_error: true }], 4)
+  expect(failed.timelines?.lead?.[0]).toMatchObject({ what: 'Code: script', ok: false })
+  expect(failed.loops.lead.running).toEqual([])
+})
+
+test('a turn that ends with a script still running closes it, so it never reads Running code forever', () => {
+  const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
+  const board = startCall(base, 'lead', { id: 'toolu_3', tool: 'REPL', doing: 'Code: script', startedAt: 1, kind: 'code' })
+  const closed = dropScripts(board, 'lead', 6)
+  expect(closed.loops.lead.running).toEqual([])
+  expect(closed.timelines?.lead?.[0]).toMatchObject({ end: 6, ok: false })
 })

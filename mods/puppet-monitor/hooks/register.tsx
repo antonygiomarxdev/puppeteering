@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, deliver, departures, endCall, endThought, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, startThought, streamThought, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, startThought, streamThought, summarize } from './theatre'
 
 const TICK_MS = 1_000
 const STREAM_MS = 1_000
@@ -205,6 +205,9 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
+    // Backstop: a script whose result never came back must not stay "Running code".
+    const closedAt = await $.clock.now()
+    await update($, board, state => dropScripts(state, e.agentId ?? LEAD, closedAt))
     if (!e.agentId) await update($, board, state => ({ ...state, isLeadBusy: false }))
     else if (worked[e.agentId]) {
       worked[e.agentId] = 0
@@ -263,6 +266,12 @@ export const register: Register = on => {
       if (value.kind === 'tool') {
         await save(text)
         text = ''
+      }
+      // A REPL call is one entry for the script; the calls it makes are nested under it until its result comes back (session.append).
+      if (value.kind === 'tool' && value.name === 'REPL') {
+        const now = await $.clock.now()
+        const scriptId = value.id
+        await update($, board, state => (state.loops[id]?.running.some(call => call.id === scriptId) ? state : startCall({ ...state, now }, id, { id: scriptId, tool: 'REPL', doing: 'Code: script', startedAt: now, kind: 'code' })))
       }
       yield value
     }
@@ -366,6 +375,11 @@ export const register: Register = on => {
           shells: state.shells.map(known => (known.id === ended.id ? { ...known, ended: ended.status } : known)),
         }
       })
+    }
+    const content = e.message?.content
+    if (Array.isArray(content) && content.some(block => (block as { type?: unknown })?.type === 'tool_result')) {
+      const at = await $.clock.now()
+      await update($, board, state => endScripts(state, content, at))
     }
     return next(e)
   }).catch(($, e, next) => next(e))

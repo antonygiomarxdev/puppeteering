@@ -75,6 +75,36 @@ export function endCall(board: Board, id: string, callId: string, end: number, o
   return { ...board, timelines: { ...timelines, [id]: line.map(done) } }
 }
 
+/** Closes a script: its entry gets its end and ok, and the calls it nested are no longer running. */
+function closeScript(board: Board, id: string, script: Running, at: number, ok: boolean): Board {
+  const loop = board.loops[id]
+  const entry = (board.timelines?.[id] ?? []).find(known => known.type === 'call' && known.id === script.id)
+  const nested = new Set((entry?.type === 'call' ? entry.inner : undefined)?.map(call => call.id) ?? [])
+  const ended = endCall(board, id, script.id, at, ok)
+  return { ...ended, loops: { ...ended.loops, [id]: { ...loop, running: loop.running.filter(call => call !== script && !nested.has(call.id)) } } }
+}
+
+/** A tool_result came back for a script in the content of a message: that script ends, ok unless the result is an error. */
+export function endScripts(board: Board, content: unknown, at: number): Board {
+  const results = new Map<string, boolean>()
+  for (const block of Array.isArray(content) ? content : []) {
+    const part = block as { type?: unknown; tool_use_id?: unknown; is_error?: unknown }
+    if (part?.type === 'tool_result' && typeof part.tool_use_id === 'string') results.set(part.tool_use_id, part.is_error !== true)
+  }
+  let moved = board
+  for (const [id, loop] of Object.entries(board.loops)) {
+    for (const script of loop.running) {
+      if (script.kind === 'code' && results.has(script.id)) moved = closeScript(moved, id, script, at, results.get(script.id) === true)
+    }
+  }
+  return moved
+}
+
+/** A turn ended with a script still running: it is closed as failed, so no "Running code" is left behind. */
+export function dropScripts(board: Board, id: string, at: number): Board {
+  return (board.loops[id]?.running ?? []).filter(call => call.kind === 'code').reduce((moved, script) => closeScript(moved, id, script, at, false), board)
+}
+
 /**
  * Starts a call: a loop's running list and timeline. While a script (a REPL call) runs in the loop,
  * a call that starts is taken as one of its own and nested under it, not listed beside it.

@@ -18,6 +18,7 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 
 ### Fixed
 - The Office button opens the session's own page on Windows. The browser got the office without `?s=<key>` and read a stale state, because Windows drops the query of a file link. The mod now writes `office/open-<key>.html`, which redirects with the key, and opens that. It is also written on the first open after `/reload-plugins`.
+- A REPL script's calls are nested under its entry in the Code Mode timeline. The mod starts the entry from the REPL's tool-use chunk and ends it when its result arrives. Before, each inner call was listed flat, and the desk never read "Running code".
 - A state file from an older mod no longer blanks the page: the page normalizes every state it reads. With no `?s=`, a stale state shows "no session picked".
 
 ### Removed
