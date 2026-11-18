@@ -7,6 +7,7 @@ What running [Claude Code agent teams](https://code.claude.com/docs/en/agent-tea
 - [Should you use a team?](#should-you-use-a-team)
 - [Setup that is easy to miss](#setup-that-is-easy-to-miss)
 - [Roles](#roles)
+- [One coordinator per goal](#one-coordinator-per-goal)
 - [The pile](#the-pile)
 - [Files and worktrees](#files-and-worktrees)
 - [Parallel, and where it stops](#parallel-and-where-it-stops)
@@ -33,11 +34,11 @@ A team that has one person's attention as its only reviewer is limited by that a
 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | Turns teams on |
 | `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` | Gives the shared task list on models newer than Opus 4.7, Sonnet 4.6 and Haiku 4.5, which leave it out by default |
 
-With only the first, a team exists and has no task list: teammates work by message, and the lead ends up assigning everything by hand.
+On those newer models, with only the first, a team exists and has no task list: teammates work by message. *Observed:* the lead ends up assigning everything by hand.
 
 - Check at the start of a session: `TaskList` answers.
-- A split-pane teammate does not inherit a variable you exported in your shell. Start the lead with `claude --settings '{"env":{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"1"}}'`.
-- *Observed, not in the docs:* with the variable in `~/.claude/settings.json`, the tools appeared in a running session once the file was saved, and new in-process teammates had them.
+- A split-pane teammate does not inherit `CLAUDE_CODE_ENABLE_TODO_TOOLS` exported in your shell. Start the lead with `claude --settings '{"env":{"CLAUDE_CODE_ENABLE_TODO_TOOLS":"1"}}'`.
+- *Observed:* with the variable in `~/.claude/settings.json`, the tools appeared in a running session once the file was saved, and new in-process teammates had them.
 
 ## Roles
 
@@ -45,30 +46,54 @@ With only the first, a team exists and has no task list: teammates work by messa
 
 | Role | Model | Does |
 | --- | --- | --- |
-| Lead | Opus | Talks to the owner, decides how, creates tasks, verifies, commits, pushes, merges |
+| Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a merged pull request |
 | Builder | Haiku | Writes code in the files its task names |
 | Reviewer | Sonnet | Independent review of a pushed head. Never the author |
 | Researcher | Sonnet | Answers one question, or investigates a track and drafts its brief |
 
 Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-agents), and spawn by role. A model named in a spawn prompt overrides the definition. The definition's `skills` field does not apply to a teammate.
 
+## One coordinator per goal
+
+*This guide's practice, not the docs':* give one goal to one lead, in its own worktree, and let it finish the goal. The lead splits the goal, coordinates its team and takes it to a merged pull request. It does not stop at a plan.
+
+Avoiding conflicts is the coordinator's job, not the workers'. As a lead, it delegates so no two teammates touch the same file. Among leads, it keeps goals apart so no two coordinators touch the same file. A collision means the split was wrong, so fix the split, not the worker.
+
+- **A coordinator is a session, not a teammate.** A session has one team, a teammate cannot start teammates, and the lead is fixed for the session's life ([limitations](https://code.claude.com/docs/en/agent-teams#limitations)). So start each coordinator yourself, in its own worktree: `git worktree add ../<repo>-<goal> -b <goal>`, then `claude` there, or open the worktree in a workspace tool such as Orca.
+- **One goal, one branch, one worktree.** Two coordinators never edit the same file. If two goals need the same file, one waits for the other's merge, or both become one goal.
+- **You set the limit.** Watch the coordinators yourself while you can review what they ship. Past that, add a coordinator of coordinators.
+
+### A coordinator of coordinators
+
+A session that only coordinates. It writes no code: it briefs each goal's coordinator, reads their pull requests and orders the merges.
+
+- It reaches the other sessions with [cross-session messaging](https://code.claude.com/docs/en/cross-session-messaging): Claude finds them with `ListAgents` and writes with `SendMessage`. A message is plain text, and it never approves anything in the session that receives it.
+- To hear when a coordinator is done, ask for one notice when that session next goes idle, instead of checking on it. Only the main conversation can ask, only for sessions on the same machine, and the request expires after 12 hours.
+- Run every coordinator in the same permission class. By default, a session that bypasses permission prompts holds a message from one that does not, and the other way round, for your approval; an unanswered approval drops the message after 5 minutes. If the classes must differ, set `crossSessionInbound` to `accept`.
+- Merges stay serial (see [Parallel, and where it stops](#parallel-and-where-it-stops)). One session or one person owns the merge order.
+
+Status: one coordinator per worktree, several side by side, is how this guide's owner works day to day. Not yet run: a coordinator of coordinators.
+
 ## The pile
 
 The lead fills the shared task list. Teammates take the next free task.
 
-- **Team size:** 3 to 5 teammates, with 5 to 6 tasks each (the docs). More adds coordination, not speed.
+- **Team size:** Start with 3 to 5 teammates, with 5 to 6 tasks each (the docs). Past some point, more adds coordination faster than speed.
 - **A task** carries its brief, its files and how it is verified. A teammate does not inherit the lead's conversation.
 - **Dependencies** go on the task, because a blocked task is not self-claimed: a review waits for the push; a task that edits a file waits for the PR that also edits it.
 - **Give the lead's own tasks an owner**, or a teammate can claim them. Writing them down lets you see the whole queue with `Ctrl+T`.
-- **Name a role in the description**, such as "Builder." or "Reviewer.", and spawn each teammate with one instruction: take the lowest free task for your role.
+- **Name a role in the description**, such as "Builder." or "Reviewer.". With one teammate per role, spawn it with one instruction: take the lowest free task for your role.
+- **With several teammates of one role, assign by name before they start.** Set each task's owner before spawning, and name the task and its files in the spawn prompt. Tell the teammate not to claim other tasks and to stop when its own are done. An owner on the task alone did not stop a claim, and an owner set mid-run arrives too late.
+- **A teammate that creates a file stops if it already exists.** *Observed:* a Write result that says "updated", not "created", meant another teammate wrote there first.
+- **One file per task and no messages between workers?** Fix each agent's file in its prompt and skip the shared list: a Workflow ran that way with no collisions.
 
-Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Not yet run: several teammates of one role competing for tasks. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
+Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Several of one role taking the lowest free task collided three times in one run, and the second write replaced the first; assigned by name in the spawn prompt, the next run wrote 24 files with none ([#5](https://github.com/antonygiomarxdev/puppeteering/issues/5)). Claiming [uses file locking](https://code.claude.com/docs/en/agent-teams#assign-and-claim-tasks), and the list kept one owner, so the loser wrote anyway: a teammate writes only after `TaskGet` shows it as the owner. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
 
 ## Files and worktrees
 
 Two teammates editing one file overwrite each other, and teams do not isolate teammates. So every task names a set of files that does not overlap with another running task.
 
-*This guide's practice, not the docs':* for several branches at once, create one sibling worktree per stream with `git worktree add`, and name it by absolute path in the task. Passing `isolation` on the Agent call would make it a subagent, not a teammate. Install dependencies in each worktree, because a fresh checkout has none.
+*This guide's practice, not the docs':* one worktree per coordinator (see [One coordinator per goal](#one-coordinator-per-goal)). Inside it, teammates share the checkout and split by files. A goal that needs two branches at once is two goals. Passing `isolation` on the Agent call would make it a subagent, not a teammate. Install dependencies in each worktree, because a fresh checkout has none.
 
 ## Parallel, and where it stops
 
@@ -96,7 +121,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 
 ## Put what must hold in a hook
 
-`CLAUDE.md` is context, and hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences.
+`CLAUDE.md` is context, and `command` and `http` hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences.
 
 | Hook | Use |
 | --- | --- |
@@ -104,7 +129,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 | `TaskCompleted` | Refuse completion until the check passes |
 | `TeammateIdle` | Send a teammate back when work is left |
 | `PreToolUse` | Deny a dangerous command. A deny holds in every permission mode |
-| `Stop` | Send the session back when a check fails. It blocks at most 8 times in a row |
+| `Stop` | Send the session back when a check fails. By default it blocks at most 8 times in a row with no tool call between. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes that |
 
 Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 lines, and move procedures to [skills](https://code.claude.com/docs/en/skills).
 
@@ -118,25 +143,25 @@ Token use grows with each active teammate; the [costs page](https://code.claude.
 - A teammate runs commands in the foreground: its background command does not wake it, and it sits idle with the work unfinished. Idle with no final report means stalled, so read the agent list before you say who is working.
 - If a reviewed pull request falls behind, merge the base into it rather than rebasing, when your merge check keeps a review across merge commits. Then only CI runs again, and the reviewer sleeps.
 - A lead's context outweighs its duplicates. Keep state in files and an issue tracker, and start a new session at a natural stop: `/clear` costs nothing.
-- A teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
-- The built-in `Explore` runs on your session's model. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
-- `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.
+- An in-process teammate's prompt cache lasts 5 minutes by default, so waking one after a long idle costs more. `subagentPromptCacheTtl` extends it, at a higher write price.
+- The built-in `Explore` runs on your session's model, or on Opus when that is Fable on a subscription, Console account or LLM gateway. A subagent [named `Explore`](https://code.claude.com/docs/en/sub-agents#built-in-subagents) in `~/.claude/agents` overrides it, so `model: haiku` makes every search cheaper. Set `omitClaudeMd: true` too: the built-in starts without `CLAUDE.md`, and an override does not unless you say so. Keep `CLAUDE.md` on any agent that needs your rules.
+- On a Pro, Max, Ultra, Team or Enterprise plan, `/usage` shows the share by subagent type. Measure before you tune; this guide has not measured its own rules yet.
 
 ## Safety
 
-- Teammates start in the lead's permission mode, including `bypassPermissions`. Pre-approve the common operations instead.
+- Teammates start in the lead's permission mode, including `bypassPermissions`. If the lead is in `dontAsk`, they start in Manual. Pre-approve the common operations instead.
 - A teammate's message is never your approval, and a teammate that was denied something cannot relay it.
 - A rule that stops teammates must hold in every directory they work in. Test it from a sibling worktree: `${CLAUDE_PROJECT_DIR}` stays at the project root while the hook's `cwd` follows the worktree.
 - Anything that changes production waits for a person's yes, for that step.
 
 ## Status
 
-Before telling anyone where things stand, list the agents and read the last comment of each open pull request. A teammate's message can arrive late, in a batch.
+Before telling anyone where things stand, list the agents and read the last comment of each open pull request. *Observed:* a teammate's message can arrive late, in a batch.
 
 Say plainly when the process is not what the documents say.
 
 ## Known limits
 
-From the docs: `/resume` and `/rewind` do not restore in-process teammates; one team per session; no nested teams; the lead is fixed; task status can lag, so check whether stuck work is really done; shutdown can be slow; split panes need tmux or iTerm2.
+From the docs: `/resume` and `/rewind` do not restore in-process teammates; one team per session; no nested teams; the lead is fixed, so each coordinator is its own session; task status can lag, so check whether stuck work is really done; shutdown can be slow; split panes need tmux or iTerm2.
 
 So keep a status file a restarted session can read, with each builder's files and task.
