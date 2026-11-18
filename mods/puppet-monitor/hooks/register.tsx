@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Loop, Task } from '../types'
-import { LEAD, alerts, draw, moveTask, office, remember, shellEnd, signature, summarize } from './theatre'
+import { LEAD, alerts, draw, moveTask, office, remember, sentences, shellEnd, signature, summarize } from './theatre'
 import type { Tone } from './theatre'
 
 const PANE = 'puppet-monitor'
@@ -39,6 +39,8 @@ async function openOffice($: EngineInterface): Promise<boolean> {
 
 export const register: Register = on => {
   let written = ''
+  // Calls each agent made since its last turn ended: a turn with none (an acknowledgement, a shutdown) does not walk.
+  const worked: Record<string, number> = {}
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'puppets', description: 'Show the lead and its agents at work, in a pane' })
@@ -116,7 +118,8 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  on('agent.spawn', ($, e, next) => next({ ...e, prompt: e.prompt + NARRATE })).catch(($, e, next) => next(e))
+  // A resumed agent keeps its first prompt: the engine ignores a rewrite there.
+  on('agent.spawn', ($, e, next) => next(e.resume ? e : { ...e, prompt: e.prompt + NARRATE })).catch(($, e, next) => next(e))
 
   on('turn.start', async ($, e, next) => {
     const now = await $.clock.now()
@@ -130,7 +133,12 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     if (!e.agentId) await update($, board, state => ({ ...state, isLeadBusy: false }))
-    else await report($, e.agentId, (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.')
+    else if (worked[e.agentId]) {
+      worked[e.agentId] = 0
+      // The final answer's first sentence is what the coordinator hears.
+      const final = typeof e.text === 'string' ? sentences(e.text)[0] : undefined
+      await report($, e.agentId, final ?? (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.')
+    }
     return next(e)
   })
 
@@ -164,6 +172,7 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const id = e.agentId ?? LEAD
+    if (e.agentId && e.tool !== 'SendMessage') worked[e.agentId] = (worked[e.agentId] ?? 0) + 1
     const fields = e as unknown as Record<string, unknown>
     const doing = summarize(fields)
     const sig = signature(fields)
