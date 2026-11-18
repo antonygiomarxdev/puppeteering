@@ -1,6 +1,6 @@
 {
   "name": "puppet-monitor",
-  "version": "0.1.0",
-  "description": "A puppet theatre pane: see the lead and each agent, its task, what it says and does, and who is stuck or looping.",
+  "version": "0.2.0",
+  "description": "See your team at work: an office in the browser with a Team panel, and a band above the prompt.",
   "types": "./types/index.d.ts"
 }
