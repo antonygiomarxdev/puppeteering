@@ -2,6 +2,16 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a finished teammate reads every message as its task again
+
+In one run, five builders each finished a task, and then got a message from the lead: a verification note, a "take task N next", or a shutdown request. Each re-read its finished task, said it would not redo it, and sometimes messaged itself, which looped once. Twice a builder took a message about a new task to be the old one, and the new task sat unclaimed until the lead named it again.
+
+Also seen: a redirect sent while a teammate was mid-task arrived after it had finished against the old brief, twice. The work was usable once, and wasted once.
+
+Changed: a message about a new task says "new task N, not task M again" and names the subject. A redirect to a running task goes into the task's description, which the teammate reads with TaskGet, as well as into a message. A shutdown goes alone, with no other request in the same message.
+
+Open: whether a stop sent as its own message lands before a teammate finishes. The one stop sent this run did not.
+
 ## 2026-11: a reviewer's mutant is a write
 
 A builder and a reviewer worked on different tasks that named the same file. The reviewer was not meant to edit it, but it proved a test with hand mutants on the live file, then restored the file from its own backup. That restore wiped the builder's edits, which had landed in between. The builder saw its changes vanish, stopped, and asked who owned the file. The test runs taken during the swaps proved nothing, because they had run against the mutant.
