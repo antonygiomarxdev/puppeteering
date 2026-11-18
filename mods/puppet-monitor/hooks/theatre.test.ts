@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, departures, draw, errorOf, historyOf, kindOf, moveTask, office, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, moveTask, office, push, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -103,7 +103,7 @@ test('the office lists each desk with its task, words and last report', () => {
   const floor = office({ tasks, history: [], shells: [], agents, loops, reports, isLeadBusy: false, now: 0 })
   expect(floor.board).toEqual([{ id: '1', subject: 'Fix login', status: 'in_progress', owner: 'builder', blocked: false }])
   const desk = floor.agents[0]
-  expect(desk).toEqual({ id: 'b', name: 'builder', type: '', description: 'd', status: 'running', working: true, sleeping: false, alert: undefined, task: '#1 Fix login', said: 'Tests pass.', doing: 'no tool call yet', report: reports.b })
+  expect(desk).toEqual({ id: 'b', name: 'builder', type: '', description: 'd', status: 'running', working: true, sleeping: false, alert: undefined, task: '#1 Fix login', said: 'Tests pass.', doing: 'no tool call yet', report: reports.b, timeline: [], files: [] })
 })
 
 test('a tool call is sorted by what it does, and anything unknown is other', () => {
@@ -185,4 +185,51 @@ test('an agent with no task in progress sleeps, even while it runs tool calls', 
   const loops = { r: { ...idle, running: [{ id: 't1', doing: 'Bash sleep 10', startedAt: 0 }], lastAt: 0 } }
   const floor = office({ tasks: [], history: [], shells: [], agents, loops, reports: {}, isLeadBusy: false, now: 0 })
   expect(floor.agents[0]).toMatchObject({ name: 'reviewer', working: true, sleeping: true, task: undefined, alert: undefined })
+})
+
+const empty = { tasks: [], history: [], shells: [], reports: {}, loops: {}, isLeadBusy: false, now: 0 }
+const crew = [
+  { id: 'a1', name: 'builder', description: '', status: 'running' },
+  { id: 'b2', name: 'reviewer', description: '', status: 'running' },
+]
+
+test('a call adds an entry, and its end fills end and ok', () => {
+  const call = { type: 'call' as const, at: 1, id: 't1', tool: 'Read', kind: 'read' as const, what: 'Read: a.md' }
+  const running = endCall(push({ ...empty, agents: crew }, 'a1', call), 'a1', 't1', 5, false)
+  expect(running.timelines?.a1).toEqual([{ ...call, end: 5, ok: false }])
+  expect(office(running).agents[0].timeline[0]).toMatchObject({ end: 5, ok: false })
+})
+
+test('41 entries keep the last 40, newest first in the office', () => {
+  let board = { ...empty, agents: crew }
+  for (let i = 0; i < 41; i++) board = push(board, 'a1', { type: 'said', at: i, text: `n${i}` })
+  expect(board.timelines?.a1).toHaveLength(40)
+  const shown = office(board).agents[0].timeline
+  expect(shown[0]).toMatchObject({ text: 'n40' })
+  expect(shown.at(-1)).toMatchObject({ text: 'n1' })
+})
+
+test('a SendMessage adds sent to the sender and received to the recipient, by name or id', () => {
+  const sent = deliver({ ...empty, agents: crew }, 'a1', { to: 'reviewer', message: 'look at this\nplease' }, 7)
+  expect(sent.timelines?.a1).toEqual([{ type: 'sent', at: 7, to: 'reviewer', text: 'look at this' }])
+  expect(sent.timelines?.b2).toEqual([{ type: 'received', at: 7, from: 'builder', text: 'look at this' }])
+  expect(deliver({ ...empty, agents: crew }, 'a1', { to: 'b2', message: 'x' }, 7).timelines?.b2).toHaveLength(1)
+})
+
+test('Edit on the same file twice gives one file with count 2, and text is capped', () => {
+  const board = touch(touch({ ...empty, agents: crew }, 'a1', '/x/a.ts'), 'a1', '/x/a.ts')
+  expect(office(board).agents[0].files).toEqual([{ path: '/x/a.ts', count: 2 }])
+  expect(push(board, 'a1', { type: 'said', at: 0, text: 'x'.repeat(500) }).timelines?.a1[0]).toMatchObject({ text: 'x'.repeat(200) })
+})
+
+test('the state with 8 agents and full timelines stays small', () => {
+  const agents = Array.from({ length: 8 }, (_, i) => ({ id: `id${i}`, name: `agent${i}`, description: 'd', status: 'running' }))
+  let board = { ...empty, agents }
+  for (const { id } of [...agents, { id: 'lead' }]) {
+    for (let i = 0; i < 40; i++) board = push(board, id, { type: i % 2 ? 'said' : 'call', at: i, id: `t${i}`, tool: 'Edit', kind: 'write', what: 'y'.repeat(300), text: 'z'.repeat(300) } as never)
+    for (let i = 0; i < 20; i++) board = touch(board, id, `C:/Users/anton/dev/puppeteering/mods/puppet-monitor/hooks/file${i}.ts`)
+  }
+  const size = JSON.stringify(office(board)).length
+  console.log(`state bytes: ${size}`)
+  expect(size).toBeLessThan(200_000)
 })

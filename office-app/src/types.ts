@@ -5,6 +5,15 @@ export type HistoryEvent = { at: number; id: string; subject: string; kind: 'cre
 
 export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'other'
 
+export type Entry =
+  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean }
+  | { type: 'said'; at: number; text: string }
+  | { type: 'sent'; at: number; to: string; text: string }
+  | { type: 'received'; at: number; from: string; text: string }
+  | { type: 'task'; at: number; id: string; subject: string; kind: 'taken' | 'done' }
+  | { type: 'report'; at: number; text: string }
+export type FileTouch = { path: string; count: number }
+
 export type Desk = {
   id: string
   name: string
@@ -28,9 +37,13 @@ export type Desk = {
   blockedBy?: string[]
   /** Left the team within the last minute. */
   gone?: boolean
+  /** Newest first, at most 40. */
+  timeline?: Entry[]
+  /** Files edited, latest first, at most 20. */
+  files?: FileTouch[]
 }
 
-export type Lead = { busy: boolean; alert?: Alert; said?: string; doing: string; kind?: ToolKind; task?: string }
+export type Lead = { busy: boolean; alert?: Alert; said?: string; doing: string; kind?: ToolKind; task?: string; timeline?: Entry[]; files?: FileTouch[] }
 export type BoardTask = { id: string; subject: string; status: string; owner?: string; blocked: boolean }
 
 export type OfficeState = {

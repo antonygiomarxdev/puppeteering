@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, departures, draw, errorOf, historyOf, kindOf, moveTask, office, remember, sentences, shellEnd, signature, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
 import type { Tone } from './theatre'
 
 const PANE = 'puppet-monitor'
@@ -13,7 +13,7 @@ const NARRATE = '\n\nBefore each tool call, write one short sentence saying what
 const EMPTY: Board = { loops: {}, reports: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0 }
 
 // Change the tag when a field changes: it declines what an earlier version stored, which outlives a reload.
-const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-5' })
+const board = atom({ plugin: 'puppet-monitor', key: 'board' } as const, EMPTY, { shape: 'board-6' })
 
 const loopOf = (state: Board, id: string, now: number): Loop => state.loops[id] ?? { running: [], lastAt: now, said: [] }
 
@@ -21,9 +21,12 @@ const COLORS: Partial<Record<Tone, string>> = { alert: '#ff5a5a', ok: '#6bf0a0',
 
 
 // An agent walks to whoever it writes to, and to the lead when its turn ends with its final answer.
-async function report($: EngineInterface, id: string, text: string, to?: string) {
+async function report($: EngineInterface, id: string, text: string, to?: string, log = false) {
   const at = await $.clock.now()
-  await update($, board, state => ({ ...state, reports: { ...state.reports, [id]: { at, text, to } } }))
+  await update($, board, state => {
+    const moved = { ...state, reports: { ...state.reports, [id]: { at, text, to } } }
+    return log ? push(moved, id, { type: 'report', at, text }) : moved
+  })
 }
 
 // The office page polls its session's file, so it needs no server. Each session has its own, so two sessions do not share one.
@@ -203,7 +206,7 @@ export const register: Register = on => {
       worked[e.agentId] = 0
       // The final answer's first sentence is what the coordinator hears.
       const final = sentences(e.answer)[0]
-      await report($, e.agentId, final ?? (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.')
+      await report($, e.agentId, final ?? (await read($, board)).loops[e.agentId]?.said.at(-1) ?? 'Done.', undefined, true)
     }
     return next(e)
   })
@@ -216,7 +219,8 @@ export const register: Register = on => {
       const now = await $.clock.now()
       await update($, board, state => {
         const loop = loopOf(state, id, now)
-        return { ...state, now, loops: { ...state.loops, [id]: { ...loop, lastAt: now, said: remember(loop.said, text) } } }
+        const moved = { ...state, now, loops: { ...state.loops, [id]: { ...loop, lastAt: now, said: remember(loop.said, text) } } }
+        return push(moved, id, { type: 'said', at: now, text: text.trim() })
       })
     }
     const stream = next(e)
@@ -245,7 +249,7 @@ export const register: Register = on => {
     const startedAt = await $.clock.now()
     await update($, board, state => {
       const loop = loopOf(state, id, startedAt)
-      return {
+      return push({
         ...state,
         now: startedAt,
         loops: {
@@ -257,8 +261,10 @@ export const register: Register = on => {
             repeat: { sig, count: loop.repeat?.sig === sig ? loop.repeat.count + 1 : 1 },
           },
         },
-      }
+      }, id, { type: 'call', at: startedAt, id: e.tool_use_id, tool: e.tool, kind: kindOf(e.tool), what: doing })
     })
+    // A call is ok only if it returned without an error: a throw leaves it false.
+    let ok = false
 
     try {
       const ran = await next(e)
@@ -297,21 +303,28 @@ export const register: Register = on => {
         const failed = errorOf(ran as { isError?: boolean; text?: string; deny?: string })
         const loop = loopOf(state, id, at)
         const loops = { ...state.loops, [id]: { ...loop, lastError: failed === undefined ? undefined : { at, text: failed } } }
-        return { ...state, tasks, shells, history, loops }
+        ok = failed === undefined
+        let moved: Board = { ...state, tasks, shells, history, loops }
+        for (const event of events) {
+          if (event.kind !== 'created' && event.who) moved = push(moved, loopKey(state, event.who), { type: 'task', at, id: event.id, subject: event.subject, kind: event.kind })
+        }
+        const path = fields.file_path ?? fields.notebook_path
+        if (ok && kindOf(e.tool) === 'write' && typeof path === 'string') moved = touch(moved, id, path)
+        return e.tool === 'SendMessage' ? deliver(moved, id, fields, at) : moved
       })
       return ran
     } finally {
       const doneAt = await $.clock.now()
       await update($, board, state => {
         const loop = loopOf(state, id, doneAt)
-        return {
+        return endCall({
           ...state,
           now: doneAt,
           loops: {
             ...state.loops,
             [id]: { ...loop, running: loop.running.filter(call => call.id !== e.tool_use_id), last: doing, lastAt: doneAt },
           },
-        }
+        }, id, e.tool_use_id, doneAt, ok)
       })
     }
     // A monitor must never cost anyone a tool call.

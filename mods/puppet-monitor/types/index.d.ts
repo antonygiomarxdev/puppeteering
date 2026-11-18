@@ -50,9 +50,25 @@ export type Report = { at: number; text: string; to?: string }
 /** A change to the queue: a task created, taken by someone, or done. */
 export type Event = { at: number; id: string; subject: string; kind: 'created' | 'taken' | 'done'; who?: string }
 
+/** One line of an agent's timeline, oldest first in the board. Texts are capped at 200 characters. */
+export type Entry =
+  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean }
+  | { type: 'said'; at: number; text: string }
+  | { type: 'sent'; at: number; to: string; text: string }
+  | { type: 'received'; at: number; from: string; text: string }
+  | { type: 'task'; at: number; id: string; subject: string; kind: 'taken' | 'done' }
+  | { type: 'report'; at: number; text: string }
+
+/** A file an agent edited or wrote, and how many times. */
+export type FileTouch = { path: string; count: number }
+
 export type Board = {
   loops: Record<string, Loop>
   reports: Record<string, Report>
+  /** Per loop, the last 40 entries, oldest first. */
+  timelines?: Record<string, Entry[]>
+  /** Per loop, the last 20 files edited, the latest last. */
+  files?: Record<string, FileTouch[]>
   tasks: Task[]
   history: Event[]
   shells: Shell[]

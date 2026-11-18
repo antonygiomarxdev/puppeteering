@@ -1,5 +1,5 @@
 // What the board means, and how it is drawn: plain functions, no engine.
-import type { Agent, Board, Departed, Event, Loop, Report, Task, ToolKind } from '../types'
+import type { Agent, Board, Departed, Entry, Event, FileTouch, Loop, Report, Task, ToolKind } from '../types'
 
 export const LEAD = 'lead'
 export const HISTORY_KEPT = 200
@@ -13,6 +13,9 @@ const STUCK_MS = 300_000
 // The same call this many times in a row is flagged, as it may be looping.
 const LOOP_COUNT = 3
 const SAID_KEPT = 8
+export const TIMELINE_KEPT = 40
+export const FILES_KEPT = 20
+const TEXT_MAX = 200
 const MIN_CARD = 24
 const MAX_CARD = 40
 
@@ -49,6 +52,43 @@ export function summarize(e: Record<string, unknown>): string {
 export function signature(e: Record<string, unknown>): string {
   const { tool_use_id: _id, agentId: _agent, ...rest } = e
   return JSON.stringify(rest)
+}
+
+const cap = (text: string) => (text.length > TEXT_MAX ? text.slice(0, TEXT_MAX) : text)
+
+/** Adds an entry to a loop's timeline: texts capped, the oldest dropped past 40. */
+export function push(board: Board, id: string, entry: Entry): Board {
+  const capped = Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, typeof value === 'string' ? cap(value) : value])) as Entry
+  const timelines = board.timelines ?? {}
+  return { ...board, timelines: { ...timelines, [id]: [...(timelines[id] ?? []), capped].slice(-TIMELINE_KEPT) } }
+}
+
+/** Fills the end and result of the call entry with this id. */
+export function endCall(board: Board, id: string, callId: string, end: number, ok: boolean): Board {
+  const timelines = board.timelines ?? {}
+  const line = timelines[id]
+  if (!line) return board
+  return { ...board, timelines: { ...timelines, [id]: line.map(entry => (entry.type === 'call' && entry.id === callId ? { ...entry, end, ok } : entry)) } }
+}
+
+/** Counts a file touched by a loop; the latest touched goes last. */
+export function touch(board: Board, id: string, path: string): Board {
+  const files = board.files ?? {}
+  const mine = files[id] ?? []
+  const count = (mine.find(file => file.path === path)?.count ?? 0) + 1
+  return { ...board, files: { ...files, [id]: [...mine.filter(file => file.path !== path), { path, count }].slice(-FILES_KEPT) } }
+}
+
+/** The loop id a name or id stands for: an agent by either, else the name as given (the lead). */
+export const loopKey = (board: Board, who: string): string => board.agents.find(agent => agent.id === who || agent.name === who)?.id ?? who
+
+/** A SendMessage: `sent` for the sender, `received` for whoever it names. */
+export function deliver(board: Board, from: string, fields: Record<string, unknown>, at: number): Board {
+  const to = typeof fields.to === 'string' ? fields.to : ''
+  const text = String(fields.message ?? fields.text ?? fields.summary ?? '').split('\n')[0] ?? ''
+  const name = from === LEAD ? LEAD : (board.agents.find(agent => agent.id === from)?.name ?? from)
+  const sent = push(board, from, { type: 'sent', at, to, text })
+  return to ? push(sent, loopKey(board, to), { type: 'received', at, from: name, text }) : sent
 }
 
 /** Sentences or lines of what an agent wrote, cleaned for one row each. */
@@ -387,7 +427,16 @@ export type Desk = {
   blockedBy?: string[]
   /** Left the team within the last minute. */
   gone?: boolean
+  /** Newest first, at most 40 entries. */
+  timeline: Entry[]
+  /** Files edited, latest first, at most 20. */
+  files: FileTouch[]
 }
+
+const timelineOf = (board: Board, id: string) => ({
+  timeline: [...(board.timelines?.[id] ?? [])].reverse(),
+  files: [...(board.files?.[id] ?? [])].reverse(),
+})
 
 function deskOf(board: Board, agent: Agent, gone: boolean): Desk {
   const view = viewOf(board, agent)
@@ -411,6 +460,7 @@ function deskOf(board: Board, agent: Agent, gone: boolean): Desk {
     lastError: view.loop?.lastError,
     blockedBy: blockedBy.length > 0 ? blockedBy : undefined,
     gone: gone || undefined,
+    ...timelineOf(board, agent.id),
   }
 }
 
@@ -429,6 +479,7 @@ export function office(board: Board, cwd = '') {
       doing: call ? `${call.doing} ${elapsed(board.now - call.startedAt)}` : '',
       kind: call?.kind,
       task: leadTask && `#${leadTask.id} ${leadTask.subject}`,
+      ...timelineOf(board, LEAD),
     },
     agents: [
       ...board.agents.map(agent => deskOf(board, agent, false)),
