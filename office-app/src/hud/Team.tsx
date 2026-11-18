@@ -3,7 +3,7 @@ import { EventBus } from '../EventBus'
 import type { Entry, HistoryEvent, OfficeState, ToolKind } from '../types'
 import { shadeOf } from './colors'
 import { eventLine, hhmm } from './format'
-import { actionPhrase, deskCard, elapsed, leadCard, LEAD_ID, SELECT_EVENT, sortCards, type Card } from './teamview'
+import { cardAction, deskCard, elapsed, leadCard, LEAD_ID, SELECT_EVENT, sortCards, type Card } from './teamview'
 
 const TEN_MIN = 10 * 60_000
 const ICON: Record<ToolKind, string> = { write: '✎', read: '👁', shell: '>_', web: '🌐', message: '✉', board: '☰', agent: '⚙', other: '·' }
@@ -15,7 +15,7 @@ function useNow(): number {
 }
 
 function CardView({ c, now, onOpen, selected }: { c: Card; now: number; onOpen: () => void; selected: boolean }) {
-  const action = actionPhrase(c.kind, c.doing)
+  const action = cardAction(c)
   const error = c.lastError && now - c.lastError.at < TEN_MIN ? c.lastError : undefined
   const report = c.report && now - c.report.at < TEN_MIN ? c.report : undefined
   const problem = c.alert || error || c.blockedBy?.length
@@ -71,7 +71,7 @@ function Drawer({ c, history, now, onClose }: { c: Card; history: HistoryEvent[]
         <button onClick={onClose} aria-label="Close">×</button>
       </div>
       <div className="task">{c.task ?? <span className="dim">no task</span>}</div>
-      {c.since && actionPhrase(c.kind, c.doing) && <div className="now"><span className="tag">NOW</span> {actionPhrase(c.kind, c.doing)} · {elapsed(now - c.since)}</div>}
+      {c.since && cardAction(c) && <div className="now"><span className="tag">NOW</span> {cardAction(c)} · {elapsed(now - c.since)}</div>}
       <h3>Timeline</h3>
       {timeline ? (
         <ul className="timeline">

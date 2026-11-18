@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actionPhrase, elapsed, sortCards, type Card } from './teamview'
+import { actionPhrase, cardAction, elapsed, sortCards, type Card } from './teamview'
 
 const card = (id: string, o: Partial<Card> = {}): Card =>
   ({ id, name: id, role: '', lead: false, working: false, sleeping: false, doing: '', extras: {}, ...o })
@@ -41,5 +41,12 @@ describe('elapsed', () => {
     expect(elapsed(-5)).toBe('0s')
     expect(elapsed(245_000)).toBe('4m 05s')
     expect(elapsed(3_900_000)).toBe('1h 05m')
+  })
+})
+
+describe('cardAction', () => {
+  it('a sleeping card has no NOW even when doing is set', () => {
+    expect(cardAction({ sleeping: true, kind: 'write', doing: 'Edit: a.ts' })).toBe('')
+    expect(cardAction({ sleeping: false, kind: 'write', doing: 'Edit: a.ts' })).toBe('Editing a.ts')
   })
 })

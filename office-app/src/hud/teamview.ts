@@ -81,3 +81,6 @@ export function actionPhrase(kind: ToolKind | undefined, doing: string): string 
     default: return detail ? `${tool}: ${detail}` : tool
   }
 }
+
+/** The NOW phrase of a card; a sleeping agent has none, even if `doing` is stale. */
+export const cardAction = (c: Pick<Card, 'sleeping' | 'kind' | 'doing'>): string => (c.sleeping ? '' : actionPhrase(c.kind, c.doing))
