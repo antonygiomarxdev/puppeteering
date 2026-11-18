@@ -57,6 +57,8 @@ Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-
 
 *This guide's practice, not the docs':* give one goal to one lead, in its own worktree, and let it finish the goal. The lead splits the goal, coordinates its team and takes it to a merged pull request. It does not stop at a plan.
 
+Avoiding conflicts is the coordinator's job, not the workers'. As a lead, it delegates so no two teammates touch the same file. Among leads, it keeps goals apart so no two coordinators touch the same file. A collision means the split was wrong, so fix the split, not the worker.
+
 - **A coordinator is a session, not a teammate.** A session has one team, a teammate cannot start teammates, and the lead is fixed for the session's life ([limitations](https://code.claude.com/docs/en/agent-teams#limitations)). So start each coordinator yourself, in its own worktree: `git worktree add ../<repo>-<goal> -b <goal>`, then `claude` there, or open the worktree in a workspace tool such as Orca.
 - **One goal, one branch, one worktree.** Two coordinators never edit the same file. If two goals need the same file, one waits for the other's merge, or both become one goal.
 - **You set the limit.** Watch the coordinators yourself while you can review what they ship. Past that, add a coordinator of coordinators.
