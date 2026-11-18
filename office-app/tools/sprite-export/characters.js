@@ -71,17 +71,52 @@ const ACCENTS = { // three per archetype, in the order of the spec's personality
   reviewer: ['#9a9aa6', '#f5b08a', '#b49be0'], researcher: ['#5cb85c', '#8a5a34', '#d9534f'], planner: ['#2f3f8a', '#e8b030', '#8fb08a'],
   ops: ['#7a98b8', '#36c7e0', '#6a748a'], helper: ['#f2d64e', '#f08aa0', '#7ab8ff'],
 }
+// The fake office extras (HR, the boss's pet, intern, vending guy, IT): fixed colours, no accent key, so they never pass for an agent's variant.
+const EXTRAS = ['hr', 'pet', 'intern', 'vending', 'it']
+const EHEAD = {
+  hr: side => { const o = side ? 2 : 0; S(10 + o, 11, 1, 5, '#3a7bd5'); S(17 + o, 11, 1, 5, '#3a7bd5'); S(11 + o, 15, 6, 1, '#3a7bd5'); S(12 + o, 16, 4, 4, '#fbfbff'); S(13 + o, 17, 2, 1, '#9aa0b4'); S(13 + o, 18, 2, 1, '#3a7bd5') },
+  pet: side => { const o = side ? 2 : 0; S(12 + o, 11, 4, 2, '#d9342f'); S(13 + o, 13, 2, 6, '#d9342f'); S(13 + o, 13, 1, 6, '#a82424') },
+  intern: side => { const o = side ? 4 : 0; S(3 + o, -8, 22, 7, '#3a7bd5'); S(3 + o, -8, 22, 1, '#6aa0ee'); S(13 + o, -9, 2, 1, '#2a5aa0'); S(0 + o, -1, 28, 2, '#2a5aa0') },
+  vending: side => { const o = side ? 4 : 0; S(2 + o, -3, 24, 4, '#4a5a7a'); S(2 + o, -3, 24, 1, '#6a7a9a'); S(1 + o, 1, 4, 11, '#4a5a7a'); S(23 + o, 1, 4, 11, '#4a5a7a'); S(10 + o, 12, 1, 5, '#fbfbff'); S(17 + o, 12, 1, 5, '#fbfbff') },
+  it: side => { const o = side ? 4 : 0; S(5 + o, -3, 18, 2, DARK); S(3 + o, -1, 2, 5, DARK); S(23 + o, -1, 2, 5, DARK); S(1 + o, 3, 4, 7, '#3a3550'); S(23 + o, 3, 4, 7, '#3a3550'); S(3 + o, 10, 1, 3, DARK); S(4 + o, 12, 5, 1, DARK); S(8 + o, 12, 2, 2, '#d9342f') },
+}
+const EPROP = {
+  hr: (x, y) => { S(x - 7, y + 8, 7, 9, '#8a5a34'); S(x - 6, y + 9, 5, 7, '#fbfbff'); S(x - 5, y + 7, 3, 2, '#9aa0b4'); S(x - 5, y + 11, 3, 1, '#9aa0b4'); S(x - 5, y + 13, 3, 1, '#9aa0b4') },
+  pet: (x, y) => { S(x - 4, y + 3, 5, 5, '#fbfbff'); S(x - 4, y + 4, 5, 1, '#8a5a34'); S(x + 1, y + 4, 2, 3, '#fbfbff'); S(x + 2, y + 5, 1, 1, '#c8ccd8'); S(x - 3, y, 1, 2, '#ffffffa0'); S(x - 1, y - 1, 1, 2, '#ffffffa0') },
+  intern: (x, y) => { S(x, y + 8, 1, 4, '#8a8a98'); S(x - 9, y + 12, 11, 1, '#c8ccd8'); S(x - 8, y + 8, 3, 4, '#fbfbff'); S(x - 8, y + 8, 3, 1, '#8a5a34'); S(x - 4, y + 8, 3, 4, '#fbfbff'); S(x - 4, y + 8, 3, 1, '#8a5a34') },
+  vending: (x, y) => { S(x - 6, y + 8, 6, 9, '#e8b830'); S(x - 6, y + 7, 6, 1, '#c89a20'); S(x - 5, y + 11, 4, 3, '#d9342f'); S(x - 4, y + 12, 2, 1, '#fbfbff') },
+  it: (x, y) => { S(x, y + 8, 1, 3, '#8a8a98'); S(x - 9, y + 9, 9, 6, '#9aa0b4'); S(x - 8, y + 10, 7, 4, '#2b2838'); S(x - 7, y + 11, 4, 1, '#6bf0a0'); S(x - 7, y + 13, 2, 1, '#6bf0a0'); S(x - 10, y + 15, 11, 1, '#6a6f86') },
+}
 function costumeFrames() {
   const out = []
   for (const a of ARCH) {
     out.push(critterFrame(`${a}-head-front`, cell(() => HEAD[a](false))), critterFrame(`${a}-head-side`, cell(() => HEAD[a](true))))
     out.push(critterFrame(`${a}-prop-front`, cell(() => PROP[a](0, 0))), critterFrame(`${a}-prop-side`, cell(() => PROP[a](2, 4))))
   }
+  for (const e of EXTRAS) {
+    out.push(critterFrame(`extra-${e}-head-front`, cell(() => EHEAD[e](false))), critterFrame(`extra-${e}-head-side`, cell(() => EHEAD[e](true))))
+    out.push(critterFrame(`extra-${e}-prop-front`, cell(() => EPROP[e](0, 0))), critterFrame(`extra-${e}-prop-side`, cell(() => EPROP[e](2, 4))))
+  }
   return out
 }
-const costumeMeta = { accentKey: ACC, archetypes: ARCH, accents: ACCENTS, grip: GRIP,
+const costumeMeta = { accentKey: ACC, archetypes: ARCH, accents: ACCENTS, grip: GRIP, extras: EXTRAS, extraTint: { color: '#ffffff', alpha: 0.28 },
   notes: 'Draw a head or prop frame at the critter origin. -front goes over idle/wink/talk/walk-down, -side over type and walk-left (flipX both). Swap every pixel equal to accentKey for the variant colour. Props are drawn in the pen rest pose over the bare-* frames; rotate about grip for the talk gesture.' }
 
+// The extras read paler than the agents: the game draws their critter with this white wash (meta.extraTint), costumes on top untouched.
+function pale(canvas, a = 0.28) { const c = mk(canvas.width, canvas.height), x = c.getContext('2d'); x.drawImage(canvas, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = '#ffffff'; x.globalAlpha = a; x.fillRect(0, 0, c.width, c.height); return c }
+// The five extras in the front and three-quarter view (pale critter) under one agent for comparison. Phone-sized.
+function extrasPreview(critterByName, costumeByName, s = 4) {
+  const per = 2 * CELL_W * s + 16, lh = 26, c = mk(per + 16, 6 * (CELL_H * s + lh) + 16), x = c.getContext('2d')
+  x.fillStyle = '#f3e6d6'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = false
+  const draw = (img, ox, oy) => x.drawImage(img, ox, oy, CELL_W * s, CELL_H * s)
+  ;['agent (conductor)', ...EXTRAS].forEach((e, i) => {
+    const ox = 8, oy = 8 + i * (CELL_H * s + lh)
+    x.fillStyle = '#2b2838'; x.font = 'bold 16px monospace'; x.fillText(e, ox, oy + 18)
+    if (!i) { for (const [view, base, dx] of [['front', 'idle', 0], ['side', 'bare-type-0', CELL_W * s + 8]]) { draw(critterByName[base], ox + dx, oy + lh); draw(tinted(costumeByName['conductor-head-' + view], ACCENTS.conductor[0]), ox + dx, oy + lh) } return }
+    for (const [view, base, dx] of [['front', 'idle', 0], ['side', 'bare-type-0', CELL_W * s + 8]]) for (const f of [pale(critterByName[base]), costumeByName['extra-' + e + '-head-' + view], costumeByName['extra-' + e + '-prop-' + view]]) draw(f, ox + dx, oy + lh)
+  })
+  return c
+}
 // Swap the key colour for a variant colour.
 function tinted(canvas, hex) {
   const c = mk(canvas.width, canvas.height), x = c.getContext('2d')
