@@ -3,10 +3,13 @@ export type Alert = { kind: 'loop' | 'stuck' | 'quiet'; text: string }
 export type Report = { at: number; text: string; to?: string }
 export type HistoryEvent = { at: number; id: string; subject: string; kind: 'created' | 'taken' | 'done'; who?: string }
 
-export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'other'
+export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'code' | 'other'
+
+/** A call made from inside a REPL script. */
+export type InnerCall = { id: string; tool: string; what: string; ok?: boolean }
 
 export type Entry =
-  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean }
+  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean; inner?: InnerCall[] }
   | { type: 'said'; at: number; text: string }
   | { type: 'sent'; at: number; to: string; text: string }
   | { type: 'received'; at: number; from: string; text: string }

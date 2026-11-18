@@ -5,6 +5,7 @@ All notable changes to puppet-monitor. Versions follow [SemVer](https://semver.o
 ## Unreleased
 
 ### Added
+- A REPL script (Code Mode) is one timeline entry, "Code: <first line>", with the calls it made nested under it; its desk shows "Running code (N calls)". The `code` tool kind is new.
 - The scene draws costumes per archetype, poses and marks per mood, and the coordinator's celebration once per completion.
 - Stable seats on the map: a compact grid of neighbourhoods, one per kind of agent. Leavers walk out through the door and newcomers walk in; nobody else moves.
 - The office extras walk the floor, pale and unnamed. `?extras=off` removes them.

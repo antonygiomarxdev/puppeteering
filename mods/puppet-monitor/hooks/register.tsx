@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, summarize } from './theatre'
 import type { Tone } from './theatre'
 
 const PANE = 'puppet-monitor'
@@ -249,19 +249,11 @@ export const register: Register = on => {
     const startedAt = await $.clock.now()
     await update($, board, state => {
       const loop = loopOf(state, id, startedAt)
-      return push({
-        ...state,
-        now: startedAt,
-        loops: {
-          ...state.loops,
-          [id]: {
-            ...loop,
-            lastAt: startedAt,
-            running: [...loop.running, { id: e.tool_use_id, doing, startedAt, kind: kindOf(e.tool) }],
-            repeat: { sig, count: loop.repeat?.sig === sig ? loop.repeat.count + 1 : 1 },
-          },
-        },
-      }, id, { type: 'call', at: startedAt, id: e.tool_use_id, tool: e.tool, kind: kindOf(e.tool), what: doing })
+      return startCall(
+        { ...state, now: startedAt, loops: { ...state.loops, [id]: { ...loop, lastAt: startedAt, repeat: { sig, count: loop.repeat?.sig === sig ? loop.repeat.count + 1 : 1 } } } },
+        id,
+        { id: e.tool_use_id, tool: e.tool, doing, startedAt, kind: kindOf(e.tool) },
+      )
     })
     // A call is ok only if it returned without an error: a throw leaves it false.
     let ok = false

@@ -1,5 +1,5 @@
 // What the board means, and how it is drawn: plain functions, no engine.
-import type { Agent, Board, Departed, Entry, Event, FileTouch, Loop, Report, Task, ToolKind } from '../types'
+import type { Agent, Board, Departed, Entry, Event, FileTouch, Loop, Report, Running, Task, ToolKind } from '../types'
 
 export const LEAD = 'lead'
 export const HISTORY_KEPT = 200
@@ -38,6 +38,8 @@ const baseName = (path: string) => path.split(/[\\/]/).pop() ?? path
 export function summarize(e: Record<string, unknown>): string {
   const tool = String(e.tool)
   const text = (key: string) => (typeof e[key] === 'string' ? (e[key] as string) : undefined)
+  // A REPL script is shown by its first line: its calls are nested under it.
+  if (tool === 'REPL') return `Code: ${(text('code') ?? '').split('\n').find(line => line.trim())?.trim() ?? 'script'}`
   const detail =
     text('description') ??
     (text('file_path') && baseName(text('file_path') as string)) ??
@@ -63,12 +65,34 @@ export function push(board: Board, id: string, entry: Entry): Board {
   return { ...board, timelines: { ...timelines, [id]: [...(timelines[id] ?? []), capped].slice(-TIMELINE_KEPT) } }
 }
 
-/** Fills the end and result of the call entry with this id. */
+/** Fills the end and result of the call entry with this id, or of the inner call of a script. */
 export function endCall(board: Board, id: string, callId: string, end: number, ok: boolean): Board {
   const timelines = board.timelines ?? {}
   const line = timelines[id]
   if (!line) return board
-  return { ...board, timelines: { ...timelines, [id]: line.map(entry => (entry.type === 'call' && entry.id === callId ? { ...entry, end, ok } : entry)) } }
+  const done = (entry: Entry): Entry => {
+    if (entry.type !== 'call') return entry
+    if (entry.id === callId) return { ...entry, end, ok, what: entry.what === 'Code: script' && entry.inner ? `Code: ${entry.inner.length} calls` : entry.what }
+    return entry.inner?.some(call => call.id === callId) ? { ...entry, inner: entry.inner.map(call => (call.id === callId ? { ...call, ok } : call)) } : entry
+  }
+  return { ...board, timelines: { ...timelines, [id]: line.map(done) } }
+}
+
+/**
+ * Starts a call: a loop's running list and timeline. While a script (a REPL call) runs in the loop,
+ * a call that starts is taken as one of its own and nested under it, not listed beside it.
+ * shortcut: nothing in a call says it came from a script, so a call made beside one is nested too; Code Mode makes every call a script's.
+ */
+export function startCall(board: Board, id: string, call: Running & { tool: string }): Board {
+  const loop = board.loops[id] ?? { running: [], lastAt: call.startedAt, said: [] }
+  const script = call.kind === 'code' ? undefined : loop.running.find(known => known.kind === 'code')
+  const running = loop.running.map(known => (known === script ? { ...known, inner: (known.inner ?? 0) + 1 } : known))
+  const moved = { ...board, loops: { ...board.loops, [id]: { ...loop, running: [...running, call] } } }
+  if (!script) return push(moved, id, { type: 'call', at: call.startedAt, id: call.id, tool: call.tool, kind: call.kind, what: call.doing })
+  const inner = { id: call.id, tool: call.tool, what: cap(call.doing) }
+  const timelines = moved.timelines ?? {}
+  const line = (timelines[id] ?? []).map(entry => (entry.type === 'call' && entry.id === script.id ? { ...entry, inner: [...(entry.inner ?? []), inner] } : entry))
+  return { ...moved, timelines: { ...timelines, [id]: line } }
 }
 
 /** Counts a file touched by a loop; the latest touched goes last. */
@@ -149,6 +173,7 @@ const KIND_OF: Record<string, ToolKind> = {
   SendMessage: 'message',
   TaskCreate: 'board', TaskUpdate: 'board', TaskList: 'board', TaskGet: 'board',
   Agent: 'agent',
+  REPL: 'code',
 }
 
 /** What a tool call does, by its name: the office draws the costume and prop from it. */
@@ -234,11 +259,17 @@ export function viewOf(board: Board, agent: Agent): View {
 const faceOf = ({ alert, working, agent }: View) =>
   FACES[alert?.kind ?? (working ? 'on' : agent.status === 'completed' ? 'done' : 'idle')]
 
+/** The call a loop is on: its script while one runs (its inner calls are part of it), else the latest. */
+export const currentOf = (loop?: Loop): Running | undefined => loop?.running.find(call => call.kind === 'code') ?? loop?.running.at(-1)
+
+/** What a running call says it is doing; a script says how many calls it made. */
+const callText = (call: Running): string => (call.kind === 'code' ? `Running code (${call.inner ?? 0} calls)` : call.doing)
+
 export function doingOf({ agent, loop }: View, now: number): string {
   // A teammate in a terminal pane of its own runs no loop here: only its status reaches this session.
   if (agent.id.includes('@')) return 'own pane: status only'
-  const call = loop?.running.at(-1)
-  if (call) return `> ${call.doing} ${elapsed(now - call.startedAt)}`
+  const call = currentOf(loop)
+  if (call) return `> ${callText(call)} ${elapsed(now - call.startedAt)}`
   return loop?.last ? `was ${loop.last}` : 'no tool call yet'
 }
 
@@ -274,7 +305,7 @@ function leadLines(board: Board, cols: number, anyAlert: boolean): { lines: Line
   const left = cols >= 70 && room > 0 ? room : 0
   const textWidth = Math.max(10, cols - left - HEAD - 2)
   const said = lead?.said.at(-1)
-  const call = lead?.running.at(-1)
+  const call = currentOf(lead)
   const task = taskOf(board, LEAD, LEAD)
   const right: Line[] = [
     [
@@ -286,7 +317,7 @@ function leadLines(board: Board, cols: number, anyAlert: boolean): { lines: Line
       .concat(['', ''])
       .slice(0, 2)
       .map((text): Line => [{ text: fit(text, textWidth), tone: 'dim' }]),
-    [{ text: fit(call ? `> ${call.doing} ${elapsed(board.now - call.startedAt)}` : '', textWidth), tone: alert ? 'alert' : 'plain' }],
+    [{ text: fit(call ? `> ${callText(call)} ${elapsed(board.now - call.startedAt)}` : '', textWidth), tone: alert ? 'alert' : 'plain' }],
   ]
   const lines = head.map((part, i): Line => [
     { text: ' '.repeat(left), tone: 'plain' },
@@ -440,7 +471,7 @@ const timelineOf = (board: Board, id: string) => ({
 
 function deskOf(board: Board, agent: Agent, gone: boolean): Desk {
   const view = viewOf(board, agent)
-  const call = view.loop?.running.at(-1)
+  const call = currentOf(view.loop)
   const blockedBy = view.task?.blockedBy.filter(id => board.tasks.some(known => known.id === id && known.status !== 'completed')) ?? []
   return {
     id: agent.id,
@@ -469,14 +500,14 @@ export function office(board: Board, cwd = '') {
   const lead = board.loops[LEAD]
   const leadTask = taskOf(board, LEAD, LEAD)
   const nameOf = (taker?: string) => (taker === LEAD ? LEAD : board.agents.find(agent => agent.id === taker || agent.name === taker)?.name ?? taker)
-  const call = lead?.running.at(-1)
+  const call = currentOf(lead)
   return {
     project: { name: baseName(cwd), cwd },
     lead: {
       busy: board.isLeadBusy,
       alert: board.isLeadBusy ? alertOf(lead, board.now) : undefined,
       said: lead?.said.at(-1),
-      doing: call ? `${call.doing} ${elapsed(board.now - call.startedAt)}` : '',
+      doing: call ? `${callText(call)} ${elapsed(board.now - call.startedAt)}` : '',
       kind: call?.kind,
       task: leadTask && `#${leadTask.id} ${leadTask.subject}`,
       ...timelineOf(board, LEAD),

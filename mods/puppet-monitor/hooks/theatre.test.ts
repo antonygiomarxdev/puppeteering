@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, moveTask, office, push, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, draw, endCall, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -232,4 +232,31 @@ test('the state with 8 agents and full timelines stays small', () => {
   const size = JSON.stringify(office(board)).length
   console.log(`state bytes: ${size}`)
   expect(size).toBeLessThan(200_000)
+})
+
+test('REPL is its own kind, and its summary is its first line', () => {
+  expect(kindOf('REPL')).toBe('code')
+  expect(summarize({ tool: 'REPL', code: '\n// find it\nawait x()' })).toBe('Code: // find it')
+})
+
+test('a script with three inner calls is one code entry with three nested calls', () => {
+  const call = (id: string, tool: string, doing: string, kind: Parameters<typeof startCall>[2]['kind'], at: number) => ({ id, tool, doing, startedAt: at, kind })
+  let board = startCall({ loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }, 'lead', call('r', 'REPL', 'Code: await go()', 'code', 1))
+  board = startCall(board, 'lead', call('1', 'Read', 'Read: x.ts', 'read', 2))
+  board = startCall(board, 'lead', call('2', 'Bash', 'Bash: ls', 'shell', 3))
+  board = startCall(board, 'lead', call('3', 'Edit', 'Edit: y.ts', 'write', 4))
+  board = endCall(board, 'lead', '2', 5, false)
+  board = endCall(board, 'lead', 'r', 6, true)
+  const line = board.timelines?.lead ?? []
+  expect(line.length).toBe(1)
+  const entry = line[0]
+  expect(entry.type === 'call' && entry.inner?.map(c => `${c.tool}:${c.ok}`)).toEqual(['Read:undefined', 'Bash:false', 'Edit:undefined'])
+  expect(board.loops.lead.running.find(c => c.id === 'r')?.inner).toBe(3)
+  expect(office({ ...board, now: 7 }, '/p').lead.doing).toContain('Running code (3 calls)')
+})
+
+test('without a script running, a call is its own entry', () => {
+  const base = { loops: {}, tasks: [], history: [], shells: [], agents: [], isLeadBusy: false, now: 0, reports: {} }
+  const board = startCall(startCall(base, 'a', { id: '1', tool: 'Read', doing: 'Read', startedAt: 1, kind: 'read' }), 'a', { id: '2', tool: 'Read', doing: 'Read', startedAt: 2, kind: 'read' })
+  expect(board.timelines?.a.length).toBe(2)
 })

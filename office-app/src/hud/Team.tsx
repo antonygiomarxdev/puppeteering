@@ -6,7 +6,7 @@ import { eventLine, hhmm } from './format'
 import { cardAction, deskCard, elapsed, leadCard, LEAD_ID, SELECT_EVENT, sortCards, type Card } from './teamview'
 
 const TEN_MIN = 10 * 60_000
-const ICON: Record<ToolKind, string> = { write: '✎', read: '👁', shell: '>_', web: '🌐', message: '✉', board: '☰', agent: '⚙', other: '·' }
+const ICON: Record<ToolKind, string> = { write: '✎', read: '👁', shell: '>_', web: '🌐', message: '✉', board: '☰', agent: '⚙', code: '{}', other: '·' }
 
 function useNow(): number {
   const [now, setNow] = useState(Date.now())
@@ -48,7 +48,7 @@ function Line({ t }: { t: Entry }) {
   switch (t.type) {
     case 'call': {
       const bad = t.ok === false
-      return <>{time}<span className="icon">{ICON[t.kind] ?? ICON.other}</span> {t.what}{t.end !== undefined && <span className="dim"> · {elapsed(t.end - t.at)}</span>}{t.ok !== undefined && <span className={bad ? 'bad' : 'ok'}> {bad ? 'error' : 'ok'}</span>}</>
+      return <>{time}<span className="icon">{ICON[t.kind] ?? ICON.other}</span> {t.what}{t.inner && <span className="dim"> · {t.inner.length} calls: {t.inner.map(c => c.what).join(', ')}</span>}{t.end !== undefined && <span className="dim"> · {elapsed(t.end - t.at)}</span>}{t.ok !== undefined && <span className={bad ? 'bad' : 'ok'}> {bad ? 'error' : 'ok'}</span>}</>
     }
     case 'said': return <>{time}<span className="icon">💬</span> {t.text}</>
     case 'sent': return <>{time}<span className="icon">✉</span> to {t.to}: {t.text}</>

@@ -1,8 +1,15 @@
 /** What a tool call does, for the office: its costume and prop. */
-export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'other'
+export type ToolKind = 'write' | 'read' | 'shell' | 'web' | 'message' | 'board' | 'agent' | 'code' | 'other'
 
 /** One tool call that has started and not answered. */
-export type Running = { id: string; doing: string; startedAt: number; kind: ToolKind }
+export type Running = {
+  id: string
+  doing: string
+  startedAt: number
+  kind: ToolKind
+  /** For a `code` call (a REPL script): how many calls it made so far. */
+  inner?: number
+}
 
 /** One loop: the lead, a subagent or a teammate. */
 export type Loop = {
@@ -50,9 +57,12 @@ export type Report = { at: number; text: string; to?: string }
 /** A change to the queue: a task created, taken by someone, or done. */
 export type Event = { at: number; id: string; subject: string; kind: 'created' | 'taken' | 'done'; who?: string }
 
+/** A call made from inside a REPL script. */
+export type InnerCall = { id: string; tool: string; what: string; ok?: boolean }
+
 /** One line of an agent's timeline, oldest first in the board. Texts are capped at 200 characters. */
 export type Entry =
-  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean }
+  | { type: 'call'; at: number; id: string; end?: number; tool: string; kind: ToolKind; what: string; ok?: boolean; inner?: InnerCall[] }
   | { type: 'said'; at: number; text: string }
   | { type: 'sent'; at: number; to: string; text: string }
   | { type: 'received'; at: number; from: string; text: string }
