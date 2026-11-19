@@ -55,6 +55,7 @@ test('a work prompt tells the model to start with TaskList', () => {
   const text = JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
   assert.match(text, /TaskList/);
   assert.match(text, /puppet-teams:agent-teams/);
+  assert.match(text, /Researcher task/);
 });
 
 test('SKILL.md frontmatter is valid', () => {

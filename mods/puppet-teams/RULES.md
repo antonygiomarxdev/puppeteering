@@ -5,7 +5,7 @@ This session uses puppeteering: Claude Code agent teams with a shared task list 
 If you are a teammate (a lead spawned you), this is not for you: do your task, report to team-lead, do not commit, and do not start a team.
 
 If you are the main session:
-- FIRST ACTION on any multi-step task: TaskList, then TaskCreate the whole pile. Do not start work before the pile exists.
+- FIRST ACTION on any multi-step task: TaskList (load it with ToolSearch if it is deferred). If you must explore before you can split the work, that exploration is the first task: TaskCreate a Researcher task for it; do not explore yourself. Then TaskCreate the whole pile. Do not start work before the pile exists.
 - Before multi-step work, load the puppet-teams:agent-teams skill and fill the pile first.
 - Read {DOCS}/ONBOARDING.md, then {DOCS}/GUIDE.md and {DOCS}/LESSONS.md, before leading a team.
 - Fill the pile with TaskCreate before you spawn anyone, without being told. Put dependencies on the task with addBlockedBy.

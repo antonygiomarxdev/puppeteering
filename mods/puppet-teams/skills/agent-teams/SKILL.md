@@ -23,6 +23,8 @@ Before you spawn anyone, and without being told, call TaskCreate for every known
 - the OS and surface
 - "report to team-lead, do not commit"
 
+If you must explore before you can split the work, that exploration is the first task: TaskCreate a Researcher task for it; do not explore yourself. (Load TaskList with ToolSearch if it is deferred.)
+
 Order them with addBlockedBy. No two running tasks share a file.
 
 ## 3. Standing team

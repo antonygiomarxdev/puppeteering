@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // puppet-teams: UserPromptSubmit hook that reminds the main session to load the puppet-teams:agent-teams skill.
 // Any failure exits 0 with no output: a prompt must never fail because of this hook.
-const TEXT = 'puppet-teams: if this prompt starts new multi-step work (more than one file, one command, or one question), your first action is TaskList, then TaskCreate the whole pile, then spawn a standing team by role (skill: puppet-teams:agent-teams). Do not start the work yourself. Otherwise, a follow-up, a question or a one-line fix, ignore this. Teammates: ignore this.';
+const TEXT = 'puppet-teams: if this prompt starts new multi-step work (more than one file, one command, or one question), your first action is TaskList (load it with ToolSearch if it is deferred). If you must explore before you can split the work, that exploration is the first task: TaskCreate a Researcher task for it; do not explore yourself. Then TaskCreate the whole pile, then spawn a standing team by role (skill: puppet-teams:agent-teams). Do not start the work yourself. Otherwise, a follow-up, a question or a one-line fix, ignore this. Teammates: ignore this.';
 
 // Windows may leave stdin open without end: exit quietly after 1 s.
 setTimeout(() => process.exit(0), 1000).unref();
