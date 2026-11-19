@@ -2,6 +2,20 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: sessions got the rules but did not start a team
+
+The SessionStart rules reached 5 of 5 project folders (`claude -p` quoted "# Agent teams"), yet a session started a team only when the owner said so. The rules arrived once, and the skip clause read as covering most requests.
+
+puppet-teams 0.2.0 added a `UserPromptSubmit` reminder (main session only; silent for `agent_id`, slash commands and prompts of 15 characters or less) and the `puppet-teams:agent-teams` skill. Probes with fresh sessions:
+
+- One-file prompt: 3 of 3 correctly skipped the team. That probe did not test pile-first.
+- Multi-step prompt (a `--verbose` flag, code, README and tests): 1 of 3 put TaskList first. One explored the code first, because it could not split the work without it.
+- After 0.2.1 made that exploration the first task, a Researcher task: 3 of 3 called ToolSearch to load the task tools, then TaskList, then TaskCreate of a Researcher task.
+
+Also in this run, the lead used teammates as one-shot subagents: one spawn per task, given a task number. A standing team by role, taking tasks from the pile, replaced that.
+
+Changed: puppet-teams 0.2.1, the RULES.md FIRST ACTION line, and the `agent-teams` skill.
+
 ## 2026-11: the lead did the work itself
 
 In the 2026-11-18 run the lead read code, grepped, extracted video frames and checked docs itself between delegated tasks. The owner had to ask twice for delegation by role.
