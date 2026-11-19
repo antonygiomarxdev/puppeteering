@@ -2,12 +2,21 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "puppeteering",
   "description": "Mods for running a team of Claude Code agents.",
-  "owner": { "name": "Antony Giomar", "url": "https://github.com/antonygiomarxdev" },
+  "owner": {
+    "name": "Antony Giomar",
+    "url": "https://github.com/antonygiomarxdev"
+  },
   "plugins": [
     {
       "name": "puppet-monitor",
       "description": "See your team at work: an office in the browser and a band above the prompt.",
       "source": "./mods/puppet-monitor",
+      "category": "productivity"
+    },
+    {
+      "name": "puppet-teams",
+      "description": "Every session works with agent teams: the rules are injected at session start.",
+      "source": "./mods/puppet-teams",
       "category": "productivity"
     }
   ]

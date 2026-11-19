@@ -1,0 +1,8 @@
+{
+  "name": "puppet-teams",
+  "version": "0.1.0",
+  "author": {
+    "name": "Antony Giomar"
+  },
+  "description": "Every session works with agent teams: the rules are injected at session start."
+}

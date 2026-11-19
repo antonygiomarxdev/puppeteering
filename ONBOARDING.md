@@ -28,25 +28,18 @@ Clone this repo to `~/dev/puppeteering`. The `CLAUDE.md` lines below use that pa
 
 The first variable turns on agent teams. The second gives the shared task list on current models. Without the second, a team has no pile.
 
-**Install the monitor.** Send these as two prompts:
+**Install the plugins.** Send these as prompts, one at a time:
 
 ```
 /plugin marketplace add antonygiomarxdev/puppeteering
+/plugin install puppet-teams@puppeteering
 /plugin install puppet-monitor@puppeteering
 ```
 
-From a local clone, pass the folder instead: `/plugin marketplace add C:\Users\<you>\dev\puppeteering`. After changing the mod, run `/reload-plugins`.
+From a local clone, pass the folder instead: `/plugin marketplace add C:\Users\<you>\dev\puppeteering`. After changing a plugin, run `/reload-plugins`.
 
-**Point every session here.** Add this to `~/.claude/CLAUDE.md`:
-
-```markdown
-## Agent teams
-
-Agent teams with the shared task list are the default way of working.
-Before leading a team, read `~/dev/puppeteering/ONBOARDING.md`, then `~/dev/puppeteering/GUIDE.md`.
-When a run shows a rule wrong, update GUIDE.md and LESSONS.md.
-A project's own document holds only what is specific to it.
-```
+- **puppet-teams** points every session here. At each start, resume, `/clear` and compaction, it adds the agent-teams rules to the session's context, with the path to this page. A teammate is told to skip them. See [`mods/puppet-teams/README.md`](mods/puppet-teams/README.md).
+- **puppet-monitor** is the office and the band, below.
 
 Nothing else is set per project. In every session, in any repo, the monitor picks up:
 - the project, from the session's folder;
