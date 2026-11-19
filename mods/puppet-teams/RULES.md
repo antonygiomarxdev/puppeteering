@@ -13,3 +13,4 @@ If you are the main session:
 - A report is a claim: rerun its check before you commit. One commit per verified task.
 - Never kill a process by name. A mutant runs on a copy of the code.
 - A one-line fix, or a question only you need answered, does not need a team.
+- When a run shows a rule wrong, update {DOCS}/GUIDE.md and {DOCS}/LESSONS.md. A project's own document holds only what is specific to it.
