@@ -4,6 +4,10 @@ Injects the agent-teams rules into every Claude Code session at start, so each s
 
 It runs on `SessionStart` (startup, resume, clear, compact). It reads `RULES.md` and adds it as context. When the repo has `ONBOARDING.md`, the rules point to the local files; otherwise they point to the GitHub copy.
 
+## Skill and reminder
+
+The `agent-teams` skill holds the lead procedure: fill the task pile first, then spawn a standing team with one teammate per role. `hooks/remind.js` runs on `UserPromptSubmit` in the main session only (never for a teammate) and tells the model to load that skill for multi-step work. Version 0.2.0: bumped so installed copies refresh.
+
 ## Install
 
 ```
@@ -24,5 +28,5 @@ It runs on `SessionStart` (startup, resume, clear, compact). It reads `RULES.md`
 ## Check
 
 ```
-node --test mods/puppet-teams/hooks/
+node --test mods/puppet-teams/hooks/*.test.js
 ```
