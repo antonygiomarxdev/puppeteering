@@ -51,6 +51,8 @@ With only the first, a team exists and has no task list: teammates work by messa
 | Reviewer | Sonnet | Independent review of a pushed head. Never the author |
 | Researcher | Sonnet | Answers one question, or investigates a track and drafts its brief |
 
+The lead does not do the work. It talks to the owner, splits the goal into tasks, spawns teammates by role, answers them, verifies their reports and commits. Reading code to find a cause, editing files, research, long commands and recordings go to a teammate: a Researcher (Sonnet) to understand, a Builder (Haiku) to change, a Reviewer (Sonnet) to check, Ops (Haiku) to run. The lead's own calls are task and message tools, Agent, rerunning a check, git commit and push. A lead that does the work itself is busy when the owner needs it, and nobody reviews what it did.
+
 Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-agents), and spawn by role. A model named in a spawn prompt overrides the definition. The definition's `skills` field does not apply to a teammate.
 
 ## The pile

@@ -61,6 +61,7 @@ The full rules are in [`GUIDE.md`](GUIDE.md). These are the ones a new lead brea
 
 | Rule | Why |
 | --- | --- |
+| The lead delegates every piece of work and stays free | The owner needs the lead; a lead busy with work also reviews its own work |
 | Builders on Haiku, reviewers and researchers on Sonnet. The lead verifies, commits and pushes; teammates never commit | [Roles](GUIDE.md#roles) |
 | Each task names its files, and no two running tasks share a file | Two teammates in one file overwrite each other |
 | A task carries its whole brief: goal, files, how to check, "report to team-lead, do not commit" | A teammate does not see the lead's conversation |

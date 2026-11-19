@@ -2,6 +2,12 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: the lead did the work itself
+
+In the 2026-11-18 run the lead read code, grepped, extracted video frames and checked docs itself between delegated tasks. The owner had to ask twice for delegation by role.
+
+Changed: GUIDE Roles and puppet-teams RULES.md: the lead delegates every piece of work to a teammate of the right role, and stays free.
+
 ## 2026-11: teammates spawned from the desktop app had no task tools
 
 In a Claude desktop (Code tab) session with both team variables set, the lead had TaskCreate, TaskList and TaskUpdate, and filled the pile. Its four teammates, spawned with the Agent tool and a `name`, had none of them. One found the tasks by reading `~/.claude/tasks/<session>/*.json`, picked the lowest free "Researcher." task, and was refused by the permission classifier when it tried to mark it. It finished as a subagent and handed back.
