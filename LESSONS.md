@@ -8,6 +8,8 @@ In the 2026-11-18 run the lead read code, grepped, extracted video frames and ch
 
 Changed: GUIDE Roles and puppet-teams RULES.md: the lead delegates every piece of work to a teammate of the right role, and stays free.
 
+Then checked against the sources: the docs recommend Sonnet for teammates, not Haiku, and say the lead should wait for teammates rather than implement. Changed: builders on Sonnet; the lead may read one file or run one command to verify.
+
 ## 2026-11: teammates spawned from the desktop app had no task tools
 
 In a Claude desktop (Code tab) session with both team variables set, the lead had TaskCreate, TaskList and TaskUpdate, and filled the pile. Its four teammates, spawned with the Agent tool and a `name`, had none of them. One found the tasks by reading `~/.claude/tasks/<session>/*.json`, picked the lowest free "Researcher." task, and was refused by the permission classifier when it tried to mark it. It finished as a subagent and handed back.
