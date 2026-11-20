@@ -15,6 +15,14 @@ Gap, seen by the lead at 04:43: the hook fires only when a teammate goes idle. A
 
 Rule: set the owner on the task before pointing a teammate at it, and an assignment by message also sets the owner.
 
+## 2026-11: the guide said more than the docs
+
+Checked against the official pages, about 60 claims held and 11 said too much: a limit stated as absolute, a default stated as fixed, or something seen in a run with no mark saying so. None were wrong. The animation had drifted further: it showed task states the docs do not have, and teammates under the lead's control when the docs say they work independently.
+
+Changed: those 11 lines, the animation's states and captions, and the README. An independent session did the audit, and the lead checked its quotes against the pages.
+
+Learned: re-read the docs for what a picture claims, not only the text. Not checked: what the linked articles say, beyond the links resolving.
+
 ## 2026-11: sessions got the rules but did not start a team
 
 The SessionStart rules reached 5 of 5 project folders (`claude -p` quoted "# Agent teams"), yet a session started a team only when the owner said so. The rules arrived once, and the skip clause read as covering most requests.
@@ -107,6 +115,18 @@ The lead wrote each brief by hand and started a track only when another ended. R
 ## 2026-11: a document said the opposite of the goal
 
 The team's own document said one team means one pull request at a time, so the lead worked in series while builders were already working in other worktrees. A rule that describes the first days of a tool goes stale. Re-measure it when the way of working changes.
+
+## 2026-11: two researchers wrote the same file
+
+Three researchers were told to take the lowest free task for their role. Two claimed the first task at once; the second write replaced the first, and the report that survived described the file that did not. The lead then set an owner on every task and messaged them, but the message arrived after a researcher had taken the next one. Only re-running each task's check exposed both. In the next run each teammate's task and files were named in its spawn prompt, with no claiming: 24 files, no collisions.
+
+## 2026-11: the same report arrived twice
+
+Builders sent their report with a message and then stopped, and stopping delivers the final answer too, so the lead woke twice for one report. An instruction sent to a working teammate crossed with its report the same way. In one conversation 143 wake-ups and 791 requests carried about 464 thousand cached tokens each. The duplicates were about 6% by estimate; the size of the conversation was the larger cost. Only the conversation's own requests were counted, not the teammates'.
+
+## 2026-11: reported as working, sitting idle
+
+Five builders had started background commands and gone idle waiting for a notice that does not come for a teammate. The lead told the owner they were working for about an hour, until the owner asked where things stood and the agent list showed otherwise. In the same days, each merge sent every other pull request back for a rebase and a new review, though the merge check already accepted a merge of the base without one.
 
 ## 2026-11: several builders of one role duplicate work
 
