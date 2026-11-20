@@ -61,8 +61,7 @@ Answer: the docs do not say. The agent-teams page covers terminals only, and the
 
 ## 2026-11: CRLF files defeat patch scripts
 
-On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with 
-, and the matches silently failed. The Edit tool handles line endings; a script must read with newline='' and use the file's own ending.
+On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with `\n` while the files had `\r\n`, and the matches silently failed. The Edit tool handles line endings; a script must read with newline='' and use the file's own ending.
 
 ## 2026-11: a teammate killed the owner's browser
 

@@ -15,7 +15,7 @@
     },
     {
       "name": "puppet-teams",
-      "description": "Every session works with agent teams: the rules are injected at session start.",
+      "description": "puppet-teams injects the agent-teams rules at session start, adds a short reminder to each work prompt in the main session, and sends an idle teammate back to its open task (TeammateIdle).",
       "source": "./mods/puppet-teams",
       "category": "productivity"
     }

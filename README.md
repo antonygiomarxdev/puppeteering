@@ -70,6 +70,7 @@ A project's own document holds only what is specific to it.
 | [`LESSONS.md`](LESSONS.md) | What failed in real runs, and what changed because of it |
 | [`REFERENCES.md`](REFERENCES.md) | The official Claude Code docs for each topic, and further reading |
 | [`setup/`](setup) | The settings to copy |
+| [`mods/puppet-teams/`](mods/puppet-teams) | Injects the agent-teams rules at session start, reminds the main session on work prompts, and sends an idle teammate back to its open task |
 | [`mods/puppet-monitor/`](mods/puppet-monitor) | The monitor: an office in the browser and a band above the prompt that show what every agent is doing, and what is stuck |
 
 ## Contributing

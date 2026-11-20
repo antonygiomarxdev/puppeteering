@@ -1,6 +1,6 @@
 # puppet-teams
 
-Injects the agent-teams rules into every Claude Code session at start, so each session knows it works with a shared task list and a team of agents.
+puppet-teams injects the agent-teams rules at session start, adds a short reminder to each work prompt in the main session, and sends an idle teammate back to its open task (TeammateIdle).
 
 It runs on `SessionStart` (startup, resume, clear, compact). It reads `RULES.md` and adds it as context. When the repo has `ONBOARDING.md`, the rules point to the local files; otherwise they point to the GitHub copy.
 

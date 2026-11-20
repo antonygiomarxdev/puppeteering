@@ -38,7 +38,7 @@ The first variable turns on agent teams. The second gives the shared task list o
 
 From a local clone, pass the folder instead: `/plugin marketplace add C:\Users\<you>\dev\puppeteering`. After changing a plugin, run `/reload-plugins`.
 
-- **puppet-teams** points every session here. At each start, resume, `/clear` and compaction, it adds the agent-teams rules to the session's context, with the path to this page. A teammate is told to skip them. See [`mods/puppet-teams/README.md`](mods/puppet-teams/README.md).
+- **puppet-teams** points every session here. At each start, resume, `/clear` and compaction, it adds the agent-teams rules to the session's context, with the path to this page; it adds a short reminder to each work prompt in the main session; and it sends an idle teammate back to its open task (`TeammateIdle`). A teammate is told to skip the rules. See [`mods/puppet-teams/README.md`](mods/puppet-teams/README.md).
 - **puppet-monitor** is the office and the band, below.
 
 Nothing else is set per project. In every session, in any repo, the monitor picks up:

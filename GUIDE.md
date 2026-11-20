@@ -90,7 +90,6 @@ The lead fills the shared task list. Teammates take the next free task.
 - **With several teammates of one role, assign by name before they start.** Set each task's owner before spawning, and name the task and its files in the spawn prompt. Tell the teammate not to claim other tasks and to stop when its own are done. An owner on the task alone did not stop a claim, and an owner set mid-run arrives too late.
 - **A teammate that creates a file stops if it already exists.** *Observed:* a Write result that says "updated", not "created", meant another teammate wrote there first.
 - **One file per task and no messages between workers?** Fix each agent's file in its prompt and skip the shared list: a Workflow ran that way with no collisions.
-
 - **A brief names its output format and what the teammate must not touch.** Anthropic: "Each subagent needs an objective, an output format, guidance on the tools and sources to use, and clear task boundaries" ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)).
 - **Set the owner before the work starts.** The lead sets it before pointing anyone at a task, and a teammate sets it before its first edit. With several teammates of one role, a task with an empty owner gets built twice.
 - **An assignment by message must also set the owner on the task.** A message can cross the teammate's idle notice, and in the run seen the idle teammate was not woken. The task file holds the truth, and the `TeammateIdle` hook reads it. `TaskUpdate` has no `removeBlockedBy`; the agent-teams docs let the lead assign a blocked task anyway.
@@ -141,7 +140,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 | `PreToolUse` | Deny a dangerous command. A deny holds in every permission mode |
 | `Stop` | Send the session back when a check fails. By default it blocks at most 8 times in a row with no tool call between. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes that |
 
-puppet-teams enforces `TeammateIdle` (0.3.0, `hooks/idle.js`): an idle teammate with an open task, owned by it or free with its role as the subject prefix, gets exit 2 and `new task N: <subject>, not task M again`. It nudges twice per task, then lets the teammate idle. Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 lines, and move procedures to [skills](https://code.claude.com/docs/en/skills).
+puppet-teams enforces `TeammateIdle` (since 0.3.0, `hooks/idle.js`): an idle teammate with an open task, owned by it or free with its role as the subject prefix, gets exit 2 and `new task N: <subject>, not task M again`. It nudges twice per task, then lets the teammate idle. Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 lines, and move procedures to [skills](https://code.claude.com/docs/en/skills).
 
 ## Cost
 
