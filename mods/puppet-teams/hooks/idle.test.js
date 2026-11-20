@@ -93,9 +93,38 @@ test('role match uses the first name part; Reviewer is not Researcher', () => {
   assert.strictEqual(run(e, 'researcher').status, 0);
 });
 
-test('an in_progress owned task says keep going', () => {
+test('an in_progress owned task says mark it completed, or tell team-lead once, or keep going', () => {
   const e = setup([T(1, 'Builder. a', { owner: 'builder', status: 'in_progress' })]);
-  assert.match(run(e, 'builder').stderr, /^keep going on task 1: Builder\. a/);
+  const r = run(e, 'builder');
+  assert.strictEqual(r.status, 2);
+  assert.strictEqual(r.stderr, 'task 1: Builder. a is still in_progress. If it is done, mark it completed with TaskUpdate, or, if you may not, tell team-lead once and stop. If not, keep going.\n');
+});
+
+test('an in_progress task with an open blocker says set it back to pending', () => {
+  const e = setup([T(1, 'Researcher. r', { owner: 'researcher' }), T(2, 'Builder. b', { owner: 'builder', status: 'in_progress', blockedBy: ['1'] })]);
+  const r = run(e, 'builder');
+  assert.strictEqual(r.status, 2);
+  assert.strictEqual(r.stderr, 'task 2 is blocked by 1: set it back to pending\n');
+});
+
+test('the blocked message names the lowest open blocker, not a completed one', () => {
+  const e = setup([T(1, 'R. a', { status: 'completed' }), T(3, 'R. c', { owner: 'x' }), T(2, 'R. b', { owner: 'x' }), T(4, 'Builder. d', { owner: 'builder', status: 'in_progress', blockedBy: ['1', '3', '2'] })]);
+  assert.match(run(e, 'builder').stderr, /^task 4 is blocked by 2:/);
+});
+
+test('an in_progress task whose blockers are all completed is not called blocked', () => {
+  const e = setup([T(1, 'R. a', { status: 'completed' }), T(2, 'Builder. b', { owner: 'builder', status: 'in_progress', blockedBy: ['1'] })]);
+  assert.match(run(e, 'builder').stderr, /^task 2: Builder\. b is still in_progress/);
+});
+
+test('a blocked in_progress task is named before a free task of the role', () => {
+  const e = setup([T(1, 'Researcher. r', { owner: 'researcher' }), T(2, 'Builder. b', { owner: 'builder', status: 'in_progress', blockedBy: ['1'] }), T(3, 'Builder. c')]);
+  assert.match(run(e, 'builder').stderr, /^task 2 is blocked by 1:/);
+});
+
+test('a blocked task owned by someone else is left alone', () => {
+  const e = setup([T(1, 'Researcher. r', { owner: 'researcher' }), T(2, 'Builder. b', { owner: 'builder-1', status: 'in_progress', blockedBy: ['1'] })]);
+  assert.strictEqual(run(e, 'builder-2').status, 0);
 });
 
 test('empty session dir is skipped: team_name dir and .session-list pointer are used', () => {
