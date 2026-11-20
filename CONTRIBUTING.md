@@ -38,3 +38,7 @@ Agent-written contributions are welcome, of course. You are still the one vouchi
 ## Conduct
 
 By taking part, you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Versions
+
+Each mod keeps its version in `.claude-plugin/plugin.json` and its changes in `CHANGELOG.md` next to it, with SemVer. puppet-monitor's `office-app/package.json` mirrors the plugin's version, and a test fails if they differ. Add each change under `## Unreleased` in the same commit. To release, rename that section to the new version, bump both files, merge to main, and tag `puppet-monitor@<version>`.

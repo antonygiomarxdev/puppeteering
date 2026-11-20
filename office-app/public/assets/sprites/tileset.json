@@ -1,0 +1,23 @@
+{
+  "image": "tileset.png",
+  "tileWidth": 16,
+  "tileHeight": 16,
+  "columns": 8,
+  "tileCount": 14,
+  "tiles": {
+    "plank-0": 0,
+    "plank-1": 1,
+    "plank-2": 2,
+    "plank-3": 3,
+    "tile-grey-a": 4,
+    "tile-grey-b": 5,
+    "carpet-stripes": 6,
+    "carpet-lilac": 7,
+    "wall": 8,
+    "wall-top": 9,
+    "wall-base": 10,
+    "wall-shadow": 11,
+    "grass": 12,
+    "grass-tufts": 13
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "puppet-monitor",
+  "version": "0.2.0",
+  "description": "See your team at work: an office in the browser with a Team panel, and a band above the prompt.",
+  "types": "./types/index.d.ts"
+}

@@ -1,0 +1,230 @@
+{
+  "frames": {
+    "hat-front": {
+      "frame": {
+        "x": 1,
+        "y": 1,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.9333333333333333
+      }
+    },
+    "hat-side": {
+      "frame": {
+        "x": 46,
+        "y": 1,
+        "w": 44,
+        "h": 30
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 44,
+        "h": 30
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 44,
+        "h": 30
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.9333333333333333
+      }
+    },
+    "deco-wall": {
+      "frame": {
+        "x": 91,
+        "y": 1,
+        "w": 32,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 32,
+        "h": 16
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 32,
+        "h": 16
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0
+      }
+    },
+    "deco-floor-big": {
+      "frame": {
+        "x": 1,
+        "y": 32,
+        "w": 24,
+        "h": 32
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 24,
+        "h": 32
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 32
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "deco-floor-small": {
+      "frame": {
+        "x": 26,
+        "y": 32,
+        "w": 12,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 12,
+        "h": 12
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 12
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "deco-floor-small-2": {
+      "frame": {
+        "x": 39,
+        "y": 32,
+        "w": 12,
+        "h": 12
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 12,
+        "h": 12
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 12
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "deco-desk": {
+      "frame": {
+        "x": 52,
+        "y": 32,
+        "w": 8,
+        "h": 8
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 8,
+        "h": 8
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 8
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "particle": {
+      "frame": {
+        "x": 61,
+        "y": 32,
+        "w": 4,
+        "h": 4
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 4,
+        "h": 4
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "particle-2": {
+      "frame": {
+        "x": 66,
+        "y": 32,
+        "w": 4,
+        "h": 4
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 4,
+        "h": 4
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "puppet-office exporter",
+    "image": "theme-christmas.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 124,
+      "h": 65
+    },
+    "scale": "1"
+  }
+}

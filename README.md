@@ -8,6 +8,7 @@
 </p>
 
 <p align="center">
+  <a href="ONBOARDING.md">Onboarding</a> ·
   <a href="GUIDE.md">Guide</a> ·
   <a href="LESSONS.md">Lessons</a> ·
   <a href="REFERENCES.md">Official docs</a> ·
@@ -46,7 +47,7 @@ The first turns teams on. The second is [one way](https://code.claude.com/docs/e
 ```markdown
 ## Agent teams
 
-Before leading a team, read `~/dev/puppeteering/GUIDE.md`.
+Before leading a team, read `~/dev/puppeteering/ONBOARDING.md`, then `~/dev/puppeteering/GUIDE.md`.
 A project's own document holds only what is specific to it.
 ```
 
@@ -64,10 +65,13 @@ A project's own document holds only what is specific to it.
 
 | File | What it is |
 | --- | --- |
+| [`ONBOARDING.md`](ONBOARDING.md) | Start here: setup, leading a team, reading the office, working on this repo |
 | [`GUIDE.md`](GUIDE.md) | The way of working: setup, roles, the pile, review, gates, cost and limits |
 | [`LESSONS.md`](LESSONS.md) | What failed in real runs, and what changed because of it |
 | [`REFERENCES.md`](REFERENCES.md) | The official Claude Code docs for each topic, and further reading |
 | [`setup/`](setup) | The settings to copy |
+| [`mods/puppet-teams/`](mods/puppet-teams) | Injects the agent-teams rules at session start, reminds the main session on work prompts, and sends an idle teammate back to its open task |
+| [`mods/puppet-monitor/`](mods/puppet-monitor) | The monitor: an office in the browser and a band above the prompt that show what every agent is doing, and what is stuck |
 
 ## Contributing
 
