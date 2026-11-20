@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
@@ -7,10 +7,13 @@ const { spawnSync } = require('child_process');
 
 const idle = path.join(__dirname, 'idle.js');
 let n = 0;
+const made = [];
+after(() => made.forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
 
 // Each call gets its own config dir and session id, so the loop guard file never leaks between tests.
 function setup(tasks) {
   const cfg = fs.mkdtempSync(path.join(os.tmpdir(), 'pt-idle-'));
+  made.push(cfg);
   const sid = ('t' + process.pid + (n++) + 'xxxxxxxx').slice(0, 8);
   if (tasks) {
     const dir = path.join(cfg, 'tasks', 'session-' + sid);
@@ -21,7 +24,7 @@ function setup(tasks) {
 }
 function run(env, name, input) {
   const stdin = input !== undefined ? input : JSON.stringify({ session_id: env.sid, teammate_name: name });
-  return spawnSync(process.execPath, [idle], { input: stdin, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: env.cfg } });
+  return spawnSync(process.execPath, [idle], { input: stdin, encoding: 'utf8', env: { ...process.env, CLAUDE_CONFIG_DIR: env.cfg, PUPPET_TEAMS_TMP: env.cfg } });
 }
 const T = (id, subject, o = {}) => ({ id: String(id), subject, status: 'pending', owner: '', blockedBy: [], ...o });
 
@@ -88,6 +91,38 @@ test('role match uses the first name part; Reviewer is not Researcher', () => {
   const e = setup([T(1, 'Builder. a'), T(2, 'Reviewer. r')]);
   assert.match(run(e, 'builder-roles-2').stderr, /new task 1/);
   assert.strictEqual(run(e, 'researcher').status, 0);
+});
+
+test('an in_progress owned task says keep going', () => {
+  const e = setup([T(1, 'Builder. a', { owner: 'builder', status: 'in_progress' })]);
+  assert.match(run(e, 'builder').stderr, /^keep going on task 1: Builder\. a/);
+});
+
+test('empty session dir is skipped: team_name dir and .session-list pointer are used', () => {
+  const e = setup(null);
+  const tasks = path.join(e.cfg, 'tasks');
+  fs.mkdirSync(path.join(tasks, 'session-' + e.sid), { recursive: true });
+  fs.mkdirSync(path.join(tasks, 'real'), { recursive: true });
+  fs.writeFileSync(path.join(tasks, 'real', '1.json'), JSON.stringify(T(1, 'Builder. a', { owner: 'builder' })));
+  const stdin = (extra) => JSON.stringify({ session_id: e.sid, teammate_name: 'builder', ...extra });
+  assert.strictEqual(run(e, 'builder', stdin({ team_name: 'real' })).status, 2);
+  fs.writeFileSync(path.join(tasks, 'session-' + e.sid, '.session-list'), 'real');
+  assert.strictEqual(run(e, 'builder', stdin({})).status, 2);
+});
+
+test('the guard file lands in PUPPET_TEAMS_TMP', () => {
+  const e = setup([T(1, 'Builder. a', { owner: 'builder' })]);
+  run(e, 'builder');
+  assert.ok(fs.existsSync(path.join(e.cfg, 'puppet-teams-idle-' + e.sid + '.json')));
+});
+
+test('the first candidate dir with json wins over a .session-list pointer', () => {
+  const e = setup([T(1, 'Builder. first', { owner: 'builder' })]);
+  const tasks = path.join(e.cfg, 'tasks');
+  fs.mkdirSync(path.join(tasks, 'real'));
+  fs.writeFileSync(path.join(tasks, 'real', '2.json'), JSON.stringify(T(2, 'Builder. second', { owner: 'builder' })));
+  fs.writeFileSync(path.join(tasks, 'session-' + e.sid, '.session-list'), 'real');
+  assert.match(run(e, 'builder').stderr, /new task 1: Builder\. first/);
 });
 
 test('hooks.json lists TeammateIdle without a matcher', () => {

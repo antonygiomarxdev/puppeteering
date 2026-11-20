@@ -2,6 +2,19 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: an assignment by message crossed the teammate's idle notice
+
+In a scriptorium session, the lead spawned builder-1 and builder-2 with the same prompt and only then set owner builder-1 on task 1. In that gap builder-2 saw task 1 free, built it and marked it completed. builder-1 found it done and went idle. The lead's message "New task 2, not task 1 again" crossed that idle notice, and the lead's own `TaskUpdate` failed whole (`removeBlockedBy` is not a parameter), so task 2 had no owner and stayed blocked. builder-1 did read the message and finished task 2. Even so, the idle teammate was not woken by the task file, and nothing sent it back to the task list.
+
+Changed: puppet-teams 0.3.0 added a `TeammateIdle` hook (`hooks/idle.js`) that reads `~/.claude/tasks/<session>/*.json` and, for an open task the teammate owns or a free one with its role, exits 2 with `new task N: <subject>, not task M again`. Review #74 left five notes; task 77 acted on two. Live probe on the lead's own team:
+
+- First try failed: the session was resumed after a compaction, so `tasks/session-802855ec` held only a `.session-list` naming `session-827e1151`, where the tasks were. The hook found no tasks and the idle builder was not sent back.
+- Now `idle.js` uses the first candidate dir that holds `*.json`, following `.session-list`. After that the hook fired for the builder: `new task 76: ..., not task 77 again`.
+
+Gap, seen by the lead at 04:43: the hook fires only when a teammate goes idle. A teammate already idle when its task is unblocked (the reviewer, idle since 03:39, with #78 unblocked at about 03:55) is not woken. The lead set the owner, which sends a `task_assignment` message, and that woke it.
+
+Rule: set the owner on the task before pointing a teammate at it, and an assignment by message also sets the owner.
+
 ## 2026-11: sessions got the rules but did not start a team
 
 The SessionStart rules reached 5 of 5 project folders (`claude -p` quoted "# Agent teams"), yet a session started a team only when the owner said so. The rules arrived once, and the skip clause read as covering most requests.

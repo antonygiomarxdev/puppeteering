@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // puppet-teams: TeammateIdle hook. An idle teammate whose task file says it has work gets exit 2 and a stderr line, so a crossed message cannot leave it idle.
-// Reads ~/.claude/tasks/session-<sid8>/*.json only; never writes tasks. Any failure exits 0 silently.
+// Reads ~/.claude/tasks/session-<sid8>, then team_name, and follows a .session-list in either; never writes tasks. Any failure exits 0 silently.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -21,7 +21,12 @@ process.stdin.on('end', () => {
     const cfg = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
     const sid8 = String(input.session_id || '').slice(0, 8);
     const dirs = [sid8 && 'session-' + sid8, input.team_name].filter(Boolean).map((n) => path.join(cfg, 'tasks', String(n)));
-    const dir = dirs.find((p) => fs.existsSync(p));
+    // A resumed session keeps its tasks in an older dir: the new dir holds only a .session-list naming it.
+    const has = (p) => { try { return fs.readdirSync(p).some((x) => x.endsWith('.json')); } catch (e) { return false; } };
+    for (const p of [...dirs]) {
+      try { dirs.push(path.join(cfg, 'tasks', fs.readFileSync(path.join(p, '.session-list'), 'utf8').trim())); } catch (e) { /* none */ }
+    }
+    const dir = dirs.find(has);
     if (!dir) return;
     const tasks = [];
     for (const f of fs.readdirSync(dir)) {
@@ -36,7 +41,7 @@ process.stdin.on('end', () => {
     const t = mine || free;
     if (!t) return;
     // Loop guard: a teammate that cannot do the task would be sent back forever. Nudge twice per task, then let it idle.
-    const guard = path.join(os.tmpdir(), 'puppet-teams-idle-' + (sid8 || 'x') + '.json');
+    const guard = path.join(process.env.PUPPET_TEAMS_TMP || os.tmpdir(), 'puppet-teams-idle-' + (sid8 || 'x') + '.json');
     let seen = {};
     try { seen = JSON.parse(fs.readFileSync(guard, 'utf8')); } catch (e) { /* first run */ }
     const key = name + ':' + t.id;
@@ -45,7 +50,7 @@ process.stdin.on('end', () => {
     fs.writeFileSync(guard, JSON.stringify(seen));
     const prev = tasks.filter((x) => x.owner === name && x.status === 'completed').sort(byId).pop();
     const again = prev ? ', not task ' + prev.id + ' again' : '';
-    process.stderr.write('new task ' + t.id + ': ' + t.subject + again + '\n');
+    process.stderr.write((t.status === 'in_progress' ? 'keep going on task ' + t.id + ': ' + t.subject : 'new task ' + t.id + ': ' + t.subject + again) + '\n');
     process.exitCode = 2;
   } catch (e) {
     // Silent on purpose.
