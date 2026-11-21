@@ -1,6 +1,7 @@
 # SPEC-01-2: First changeset and a plugin version check
 
 Status: Approved (2026-11-21)
+Approval: content mWQpW-cMItie; rests on ../../requests/REQ-11-changesets-and-scriptorium-install.md -7r3Kd275stH
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary

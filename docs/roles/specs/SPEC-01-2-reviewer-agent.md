@@ -1,6 +1,7 @@
 # SPEC-01-2: The puppet-teams reviewer agent
 
 Status: Approved (2026-11-21)
+Approval: content Lrm39h7cPl3A; rests on ../../requests/REQ-10-a-tester-role-before-the-builder.md IbqKbPEV1cZ9
 Rests on: ../../requests/REQ-10-a-tester-role-before-the-builder.md
 
 ## Summary

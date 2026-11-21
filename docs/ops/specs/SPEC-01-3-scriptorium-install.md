@@ -1,6 +1,7 @@
 # SPEC-01-3: Scriptorium install in the worktree
 
 Status: Approved (2026-11-21)
+Approval: content iDrFwqUvmSPA; rests on ../../requests/REQ-11-changesets-and-scriptorium-install.md -7r3Kd275stH
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary

@@ -1,6 +1,7 @@
 # SPEC-01-1: Changesets workspace and config
 
 Status: Approved (2026-11-21)
+Approval: content xVn4CGCIilk-; rests on ../../requests/REQ-11-changesets-and-scriptorium-install.md -7r3Kd275stH
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
