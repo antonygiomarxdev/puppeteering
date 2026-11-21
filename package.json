@@ -5,9 +5,10 @@
     "mods/*"
   ],
   "scripts": {
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "release:version": "changeset version && node -e \"const f='mods/puppet-teams/.claude-plugin/plugin.json',p=require('./mods/puppet-teams/package.json'),m=JSON.parse(require('fs').readFileSync(f));m.version=p.version;require('fs').writeFileSync(f,JSON.stringify(m,null,2)+'\\n')\""
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0"
+    "@changesets/cli": "^3.0.3"
   }
 }
