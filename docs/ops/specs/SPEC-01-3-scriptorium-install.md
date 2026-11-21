@@ -1,13 +1,13 @@
 # SPEC-01-3: Scriptorium install in the worktree
 
-Status: Draft
+Status: Approved (2026-11-21)
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
 
 Run `scriptorium install` so the pre-commit gate runs. `core.hooksPath` is repo config shared by every worktree, so it is set once; only `.scriptorium/pre-commit` and `.scriptorium/local` are per worktree, so run install in each. Done runs in Git Bash.
 
-Last change: 2026-11-21, drafted
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 

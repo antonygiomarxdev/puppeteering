@@ -1,13 +1,13 @@
 # SPEC-01-1: The puppet-teams tester agent
 
-Status: Draft
+Status: Approved (2026-11-21)
 Rests on: ../../requests/REQ-10-a-tester-role-before-the-builder.md
 
 ## Summary
 
 One plugin agent definition, `puppet-teams:tester`, holding only the method, and a node test of its frontmatter and headings. The tester gets a spec path and works with no implementation (D-31), and writes the tests before the builder, in the project's own framework and style.
 
-Last change: 2026-11-21, D-31: no implementation instead of no code; tools allowlist; tests committed before the builder; no custom hook
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 

@@ -1,13 +1,13 @@
 # SPEC-01-2: The puppet-teams reviewer agent
 
-Status: Draft
+Status: Approved (2026-11-21)
 Rests on: ../../requests/REQ-10-a-tester-role-before-the-builder.md
 
 ## Summary
 
 One plugin agent definition, `puppet-teams:reviewer`, holding only the method, and its test cases added to `agents.test.js`. The rules come from the project's own documents, read in a stated order. Second of two runs.
 
-Last change: 2026-11-21, D-31: tester tests checked unchanged, covered and public-interface only
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 

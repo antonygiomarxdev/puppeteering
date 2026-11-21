@@ -1,13 +1,13 @@
 # SPEC-01-1: Changesets workspace and config
 
-Status: Draft
+Status: Approved (2026-11-21)
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
 
 The npm workspace and changesets config: a root `package.json` with `workspaces: ["mods/*"]`, a `package.json` for puppet-teams so changesets can version it, and `.changeset/config.json`. First of two runs; the changeset itself is SPEC-01-2.
 
-Last change: 2026-11-21, split after review 118
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 

@@ -1,13 +1,13 @@
 # SPEC-01-2: First changeset and a plugin version check
 
-Status: Draft
+Status: Approved (2026-11-21)
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
 
 One changeset for puppet-teams and a node test that fails when `package.json` and `.claude-plugin/plugin.json` carry different versions. I chose the test over a sync script: one file, nothing to wire into `changeset version`; the failure after a bump tells the person to copy the version. Second of two runs.
 
-Last change: 2026-11-21, split after review 118
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 
