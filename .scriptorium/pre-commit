@@ -1,0 +1,6 @@
+#!/bin/sh
+cd "$(dirname "$0")/.." || exit 1
+if [ -n "$SCRIPTORIUM_CLI" ]; then exec $SCRIPTORIUM_CLI pre-commit; fi
+if [ -f .scriptorium/local ]; then exec bun "$(cat .scriptorium/local)" pre-commit; fi
+echo "scriptorium: no tool to run; run scriptorium install" >&2
+exit 1

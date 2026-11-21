@@ -14,13 +14,13 @@ Decisions not yet absorbed: [DECISIONS.md](DECISIONS.md). Terms: [GLOSSARY.md](G
 
 Starting ten agents takes a minute; knowing that what they built is right takes all of the owner's attention (README, "Why this exists"). Runs of the method in this repo recorded these failures, each in LESSONS.md:
 
-- Three builders on one pile built the same task twice three times, because the owner was set late ([LESSONS.md, "2026-11: several builders of one role duplicate work"](../LESSONS.md#2026-11-several-builders-of-one-role-duplicate-work)).
+- Three builders on one pile built the same task twice three times, because the owner was set late ([archived lesson, "2026-11: several builders of one role duplicate work"](retro/lessons/2026-11.md#2026-11-several-builders-of-one-role-duplicate-work)).
 - A change to a task already marked done was lost: the builder answered "task 9 is already done" ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - Five times an assignment crossed the teammate's idle notice and the teammate said "already done" about the previous task ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - Both review rounds failed work that had 48 to 52 passing tests: promised checks that did not exist, and a stop rule that could loop ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - A coordinator called the work ready before the last review report arrived, and a real blocker shipped unreviewed ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - Fresh sessions received the rules and still did not start a team ([LESSONS.md, "2026-11: sessions got the rules but did not start a team"](../LESSONS.md#2026-11-sessions-got-the-rules-but-did-not-start-a-team)).
-- A teammate killed the owner's browser by killing a process by name ([LESSONS.md, "2026-11: a teammate killed the owner's browser"](../LESSONS.md#2026-11-a-teammate-killed-the-owners-browser)).
+- A teammate killed the owner's browser by killing a process by name ([docs/retro/lessons/2026-11.md, "2026-11: a teammate killed the owner's browser"](retro/lessons/2026-11.md#2026-11-a-teammate-killed-the-owners-browser)).
 - A resumed coordinator kept running beside its old self, and both led the same pull requests ([LESSONS.md, "2026-11: a resumed lead kept running beside its old self"](../LESSONS.md#2026-11-a-resumed-lead-kept-running-beside-its-old-self), a lesson from another session).
 - A task dependency cleared when the blocking task completed, not when its PR merged, so two PRs were built on the wrong base (issue #10, 2026-11-19).
 - The owner cannot see what each agent is doing without asking the coordinator (memory note (paraphrase), monitor purpose, 2026-11-18).

@@ -48,12 +48,15 @@ On those newer models, with only the first, a team exists and has no task list: 
 | Role | Model | Does |
 | --- | --- | --- |
 | Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a merged pull request |
+| Tester | Sonnet | Runs before the builder. Input is the spec path; it works with no implementation: the spec, the public interface (signatures, types) and the test config only (D-31). Writes tests that name the row they cover and fail for the right reason; the builder may not edit them |
 | Builder | Sonnet (Haiku for a mechanical one-file task) | Writes code in the files its task names |
-| Reviewer | Sonnet | Independent review of a pushed head. Never the author |
+| Reviewer | Sonnet | Independent review of a pushed head, by area (backend, frontend, hooks, docs, security). Never the author. Gates first, every FAIL cites a row or gate, at most 3 rounds, a binary verdict, check output pasted |
 | Researcher | Sonnet | Answers one question, or investigates a track and drafts its brief |
 | Ops | Haiku | Runs long commands and recordings, and reports what they printed |
 
 The lead coordinates, assigns and verifies. It does not do teammates' tasks: it delegates them by role and waits. The docs say: "Wait for your teammates to complete their tasks before proceeding" ([agent teams](https://code.claude.com/docs/en/agent-teams)). Reading code to find a cause, editing files, research, long commands and recordings go to a teammate: a Researcher (Sonnet) to understand, a Builder (Sonnet) to change, a Reviewer (Sonnet) to check, Ops (Haiku) to run. The lead may read one file or run one command to verify a report. Its own calls are task and message tools, Agent, rerunning a check, git commit and push. It watches the team and steers, because "Letting a team run unattended for too long increases the risk of wasted effort" (same page). A lead that does the work itself is busy when the owner needs it, and nobody reviews what it did.
+
+A brief is the path of one approved small spec, drafted by a researcher; the writer runs its Done command before assigning it. A spec-driven pile runs tester, then builder blocked by it, then review blocked by the build.
 
 Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-agents), and spawn by role. A model named in a spawn prompt overrides the definition. The definition's `skills` field does not apply to a teammate.
 
@@ -134,6 +137,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 - A reviewer is a session that did not write the code. The [best practices](https://code.claude.com/docs/en/best-practices) say why: it is not swayed by the reasoning that produced the code.
 - Review against a spec, and say to skip style: a reviewer asked to find problems always finds something.
 - Ask reviewers to run things, not to read them, and to report what they did not check.
+- A reviewer holds the method; the rules come from the project (D-30). Examples a project may adopt into its own docs: backend (dependency direction, error paths, negative examples tested), frontend (UI rules, screenshot, UX states), hooks (exit codes, `stop_hook_active`, Windows and Linux), docs (claims opened and linked, caps), security (the test stubs the dangerous call). No agent applies these by itself.
 - The docs' example runs several reviewers on one PR, each with one lens (security, performance, tests).
 - Keep every reviewer until its last report is in. Do not call the work ready, or send shutdowns, before then.
 - Read the decisions an agent made, not only its summary. Accepting output because it looks right is what Osmani calls [cognitive surrender](https://addyosmani.com/blog/cognitive-surrender/).

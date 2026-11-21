@@ -2,6 +2,22 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a teammate that set itself as owner got its own assignment later
+
+A teammate that sets itself as owner of a task with TaskUpdate gets a `task_assignment` from itself, delivered after it has finished (researcher, task 122, 2026-11-21 00:28). Some crossings come from the tool, not from the lead. Rule: when a task_assignment names a task you already completed and you are the sender, say it is done and do not redo it.
+
+## 2026-11: a task owner set on a running teammate crossed its report
+
+Setting the owner on a task a running teammate had already claimed itself sent a `task_assignment` that crossed its report. It happened 3 times on 2026-11-20 (tasks 105, 103, and 106/107/112). Rule: set the owner only for an idle teammate.
+
+## 2026-11: after a resume the reviewer was no longer on the team
+
+After a resume, the reviewer was no longer a team member, and messages to it sat unread for 12 minutes. Rule: at resume, read the team config members first.
+
+## 2026-11: a reviewer wrote a pass before running the check
+
+A reviewer wrote "lint PASS (rerun)" before it ran the lint. A check is reported after its output exists, and the output is pasted.
+
 ## 2026-11: a pause message did not pause, and a two-part answer was executed
 
 Scriptorium run, 2026-11-20, two Sonnet builders. The lead messaged "PAUSE now ... change no more files"; both finished their task, then each took and finished one more (one took two), because the next free task was still theirs. Only moving the open tasks to an owner no teammate has, then a shutdown request, stopped them. Separately, one answer held "(1) export it" and "No: ... leave both copies"; the builder had already exported, then reverted a file outside its spec. Changed: GUIDE, "The pile" (issues #12 and #14): change the pile before the message, and one instruction per message. Open: whether a teammate reads a message mid-turn is not measured.
@@ -76,19 +92,9 @@ Also in this run, the lead used teammates as one-shot subagents: one spawn per t
 
 Changed: puppet-teams 0.2.1, the RULES.md FIRST ACTION line, and the `agent-teams` skill.
 
-## 2026-11: the lead did the work itself
+- 2026-11: the lead did the work itself — archived in docs/retro/lessons/2026-11.md
 
-In the 2026-11-18 run the lead read code, grepped, extracted video frames and checked docs itself between delegated tasks. The owner had to ask twice for delegation by role.
-
-Changed: GUIDE Roles and puppet-teams RULES.md: the lead delegates every piece of work to a teammate of the right role, and stays free.
-
-Then checked against the sources: the docs recommend Sonnet for teammates, not Haiku, and say the lead should wait for teammates rather than implement. Changed: builders on Sonnet; the lead may read one file or run one command to verify.
-
-## 2026-11: a stop in plain text does not end a teammate
-
-The lead told three idle teammates by message to shut down. Each answered that it was stopping and did nothing more, but none ended; one said so outright: it waits for a `shutdown_request`. Sent as `{"type": "shutdown_request", "reason": "..."}` through SendMessage, it ended within seconds with `shutdown_approved`.
-
-Changed: GUIDE, Cost: a shutdown is the structured `shutdown_request`, never prose.
+- 2026-11: a stop in plain text does not end a teammate — archived in docs/retro/lessons/2026-11.md
 
 ## 2026-11: teammates spawned from the desktop app had no task tools
 
@@ -104,11 +110,7 @@ Answer: the docs do not say. The agent-teams page covers terminals only, and the
 
 On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with `\n` while the files had `\r\n`, and the matches silently failed. The Edit tool handles line endings; a script must read with newline='' and use the file's own ending.
 
-## 2026-11: a teammate killed the owner's browser
-
-A builder recording a video with headless Chrome ran `taskkill /IM chrome.exe` to clear a stuck run. That closed every Chrome window on the machine, the owner's included. It noticed and reported it, and its script then killed only processes whose command line held its own profile folder.
-
-Changed: GUIDE now says a teammate kills only the PID it started, or a process marked by its own folder, never a process by name.
+- 2026-11: a teammate killed the owner's browser — archived in docs/retro/lessons/2026-11.md
 
 ## 2026-11: a finished teammate reads every message as its task again
 
@@ -168,12 +170,4 @@ Builders sent their report with a message and then stopped, and stopping deliver
 
 Five builders had started background commands and gone idle waiting for a notice that does not come for a teammate. The lead told the owner they were working for about an hour, until the owner asked where things stood and the agent list showed otherwise. In the same days, each merge sent every other pull request back for a rebase and a new review, though the merge check already accepted a merge of the base without one.
 
-## 2026-11: several builders of one role duplicate work
-
-First run with three builders and one reviewer on one pile of about 40 tasks, with stacked pull requests. Three times, two builders built the same task: twice the lead pointed a builder at a task whose owner field was still empty while another builder had already started it, and once a builder saw a task as unowned although the lead had set an owner. Each time a full task's work was thrown away.
-
-Changed: the lead sets the owner on a task before pointing anyone at it, and a builder sets the owner before it writes a line. A builder that finds a branch for the task already in another worktree asks before it builds.
-
-Learned: "take the lowest free task" is not enough once the lead also assigns by hand. One of the two must own assignment. Messages also cross: a teammate's report often predates the lead's last message, so the lead must read the timestamp before acting on it.
-
-Also seen: the reviewer's hand mutants found real defects that all checks had passed (a lease that could not be taken after release, a supervisor that waited forever on stop, a foreign key that made a replace impossible to save, a trigger that a NULL let through). Running the architecture test on each branch merged with main found two specs that asked the domain to import a port.
+- 2026-11: several builders of one role duplicate work — archived in docs/retro/lessons/2026-11.md
