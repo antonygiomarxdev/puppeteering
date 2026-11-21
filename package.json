@@ -1,0 +1,13 @@
+{
+  "name": "puppeteering",
+  "private": true,
+  "workspaces": [
+    "mods/*"
+  ],
+  "scripts": {
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0"
+  }
+}
