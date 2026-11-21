@@ -2,6 +2,18 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a task owner set on a running teammate crossed its report
+
+Setting the owner on a task a running teammate had already claimed itself sent a `task_assignment` that crossed its report. It happened 3 times on 2026-11-20 (tasks 105, 103, and 106/107/112). Rule: set the owner only for an idle teammate.
+
+## 2026-11: after a resume the reviewer was no longer on the team
+
+After a resume, the reviewer was no longer a team member, and messages to it sat unread for 12 minutes. Rule: at resume, read the team config members first.
+
+## 2026-11: a reviewer wrote a pass before running the check
+
+A reviewer wrote "lint PASS (rerun)" before it ran the lint. A check is reported after its output exists, and the output is pasted.
+
 ## 2026-11: a pause message did not pause, and a two-part answer was executed
 
 Scriptorium run, 2026-11-20, two Sonnet builders. The lead messaged "PAUSE now ... change no more files"; both finished their task, then each took and finished one more (one took two), because the next free task was still theirs. Only moving the open tasks to an owner no teammate has, then a shutdown request, stopped them. Separately, one answer held "(1) export it" and "No: ... leave both copies"; the builder had already exported, then reverted a file outside its spec. Changed: GUIDE, "The pile" (issues #12 and #14): change the pile before the message, and one instruction per message. Open: whether a teammate reads a message mid-turn is not measured.
@@ -76,19 +88,9 @@ Also in this run, the lead used teammates as one-shot subagents: one spawn per t
 
 Changed: puppet-teams 0.2.1, the RULES.md FIRST ACTION line, and the `agent-teams` skill.
 
-## 2026-11: the lead did the work itself
+- 2026-11: the lead did the work itself — archived in docs/retro/lessons/2026-11.md
 
-In the 2026-11-18 run the lead read code, grepped, extracted video frames and checked docs itself between delegated tasks. The owner had to ask twice for delegation by role.
-
-Changed: GUIDE Roles and puppet-teams RULES.md: the lead delegates every piece of work to a teammate of the right role, and stays free.
-
-Then checked against the sources: the docs recommend Sonnet for teammates, not Haiku, and say the lead should wait for teammates rather than implement. Changed: builders on Sonnet; the lead may read one file or run one command to verify.
-
-## 2026-11: a stop in plain text does not end a teammate
-
-The lead told three idle teammates by message to shut down. Each answered that it was stopping and did nothing more, but none ended; one said so outright: it waits for a `shutdown_request`. Sent as `{"type": "shutdown_request", "reason": "..."}` through SendMessage, it ended within seconds with `shutdown_approved`.
-
-Changed: GUIDE, Cost: a shutdown is the structured `shutdown_request`, never prose.
+- 2026-11: a stop in plain text does not end a teammate — archived in docs/retro/lessons/2026-11.md
 
 ## 2026-11: teammates spawned from the desktop app had no task tools
 
@@ -104,11 +106,7 @@ Answer: the docs do not say. The agent-teams page covers terminals only, and the
 
 On Windows the repo checks out with CRLF. Two builders patched files with scripts that matched multi-line strings written with `\n` while the files had `\r\n`, and the matches silently failed. The Edit tool handles line endings; a script must read with newline='' and use the file's own ending.
 
-## 2026-11: a teammate killed the owner's browser
-
-A builder recording a video with headless Chrome ran `taskkill /IM chrome.exe` to clear a stuck run. That closed every Chrome window on the machine, the owner's included. It noticed and reported it, and its script then killed only processes whose command line held its own profile folder.
-
-Changed: GUIDE now says a teammate kills only the PID it started, or a process marked by its own folder, never a process by name.
+- 2026-11: a teammate killed the owner's browser — archived in docs/retro/lessons/2026-11.md
 
 ## 2026-11: a finished teammate reads every message as its task again
 
