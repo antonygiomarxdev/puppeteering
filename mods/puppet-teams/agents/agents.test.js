@@ -85,6 +85,10 @@ test('covers: roles/REQ-10/D-31 tester body states the no-implementation and com
   ]);
 });
 
+test('covers: roles/REQ-10/D-25 tester body states the red gate: fail on the assertion, not on an import', () => {
+  CONTAINS(load('tester.md').body, ['red gate', 'fail on its assertion', 'not on an import']);
+});
+
 // ---- SPEC-01-2 reviewer ----
 
 test('covers: roles/REQ-10/D-27 reviewer.md exists and name is "reviewer" with no colon', () => {
