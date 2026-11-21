@@ -38,7 +38,10 @@ process.stdin.on('end', () => {
     const byId = (a, b) => Number(a.id) - Number(b.id);
     const mine = open.filter((t) => t.owner === name).sort(byId)[0];
     const free = open.filter((t) => !t.owner && t.status === 'pending' && String(t.subject || '').split('.')[0].trim().toLowerCase() === role).sort(byId)[0];
-    const t = mine || free;
+    // A task its owner set to in_progress while a blocker is still open (issue #13): ask for pending, name the lowest open blocker.
+    const openBlocker = (x) => (x.blockedBy || []).map(String).filter((b) => !done.has(b)).sort((a, b) => Number(a) - Number(b))[0];
+    const blocked = tasks.filter((x) => x.owner === name && x.status === 'in_progress' && openBlocker(x)).sort(byId)[0];
+    const t = mine || blocked || free;
     if (!t) return;
     // Loop guard: a teammate that cannot do the task would be sent back forever. Nudge twice per task, then let it idle.
     const guard = path.join(process.env.PUPPET_TEAMS_TMP || os.tmpdir(), 'puppet-teams-idle-' + (sid8 || 'x') + '.json');
@@ -50,7 +53,11 @@ process.stdin.on('end', () => {
     fs.writeFileSync(guard, JSON.stringify(seen));
     const prev = tasks.filter((x) => x.owner === name && x.status === 'completed').sort(byId).pop();
     const again = prev ? ', not task ' + prev.id + ' again' : '';
-    process.stderr.write((t.status === 'in_progress' ? 'keep going on task ' + t.id + ': ' + t.subject : 'new task ' + t.id + ': ' + t.subject + again) + '\n');
+    // An owner may be unable to close its task (a spawn prompt can forbid TaskUpdate): the notice lets it say so once instead of looping.
+    const msg = t === blocked ? 'task ' + t.id + ' is blocked by ' + openBlocker(t) + ': set it back to pending'
+      : t.status === 'in_progress' ? 'task ' + t.id + ': ' + t.subject + ' is still in_progress. If it is done, mark it completed with TaskUpdate, or, if you may not, tell team-lead once and stop. If not, keep going.'
+      : 'new task ' + t.id + ': ' + t.subject + again;
+    process.stderr.write(msg + '\n');
     process.exitCode = 2;
   } catch (e) {
     // Silent on purpose.

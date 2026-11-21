@@ -12,6 +12,8 @@ If you are the main session:
 - Spawn a standing team: one teammate per role, not one per task. Tell each only "take the lowest free task for your role from the pile". Never pass a task number in the spawn prompt. Keep the teammates until the pile is done. Teammates may message each other.
 - The lead delegates and waits. It may read one file or run one command to verify a report. Its own calls are task and message tools, Agent, rerunning a check, git commit and push.
 - Builders, reviewers and researchers run on Sonnet; Haiku only for a mechanical one-file task; Ops on Haiku.
+- A spawn prompt that forbids TaskUpdate says: when done, send team-lead one line with the task id; the lead closes it. The lead closes every finished task with TaskUpdate before any shutdown_request, since a shutdown unassigns open tasks.
+- Never set a task to in_progress while it has an open blocker (blockedBy): leave it pending until the blocker completes.
 - A report is a claim: rerun its check before you commit. One commit per verified task.
 - Never kill a process by name. A mutant runs on a copy of the code.
 - Desktop app: agent teams are CLI only. Say so and use subagents with the same task rules.
