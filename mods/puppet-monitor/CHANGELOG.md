@@ -36,7 +36,7 @@ The office becomes an app: Phaser 3, React and Vite in `office-app/`, built to t
 - **Agent detail.** Click a card or a critter to open its timeline: calls with duration and outcome, messages sent and received, files edited, task events. A ring marks it on the map.
 - **Per-agent timeline in the state.** The last 40 entries and 20 files per agent and per lead. Each desk also carries the agent's type, tool kind, `since`, `lastError`, `blockedBy`, and `gone` for 60s after the agent leaves.
 - **Task history.** Created, taken and done events with who and when.
-- **Characters.** Eight archetypes with a costume, prop, walk and three personalities each; a state table with every mood; the coordinator's own states. See `office-app/docs/characters.md`.
+- **Characters.** Eight archetypes with a costume, prop, walk and three personalities each; a state table with every mood; the coordinator's own states. See `docs/monitor/ux/UX-01-characters.md`.
 - **Stable seats.** Neighbourhoods per kind of agent that grow by half-pods. Nobody moves when someone joins or leaves, and leavers walk out through the door.
 - **Seasonal themes as data.** Christmas, New Year, Halloween and Easter, picked by date or `?theme=`. `?theme=none` turns them off.
 - **Office extras.** HR, the boss's pet, an intern, the vending guy and IT. They never pass for agents. `?extras=off` removes them.

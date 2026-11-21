@@ -1,4 +1,4 @@
-// Characters (spec: office-app/docs/characters.md): costume overlays, the new critter poses, and the new marks.
+// Characters (spec: docs/monitor/ux/UX-01-characters.md): costume overlays, the new critter poses, and the new marks.
 // Inlined after exporter.js, so it shares mk, withCtx, trimmed, px, disc and the CELL_/OX/OY constants.
 
 const ACC = '#ff00ff' // accent key colour: overlays mark every variant-coloured pixel with it, the game swaps it per variant

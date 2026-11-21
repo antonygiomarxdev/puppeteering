@@ -2,6 +2,37 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a pause message did not pause, and a two-part answer was executed
+
+Scriptorium run, 2026-11-20, two Sonnet builders. The lead messaged "PAUSE now ... change no more files"; both finished their task, then each took and finished one more (one took two), because the next free task was still theirs. Only moving the open tasks to an owner no teammate has, then a shutdown request, stopped them. Separately, one answer held "(1) export it" and "No: ... leave both copies"; the builder had already exported, then reverted a file outside its spec. Changed: GUIDE, "The pile" (issues #12 and #14): change the pile before the message, and one instruction per message. Open: whether a teammate reads a message mid-turn is not measured.
+
+## 2026-11: a teammate that may not close its task was sent back to it
+
+On another project (rumai, 2026-11-20) the spawn prompt told ux-fixer "do not call TaskUpdate". It finished task 52 and could not close it. `idle.js` saw an owned in_progress task and sent "keep going on task 52" twice (guard file `ux-fixer:52` at 2); each time ux-fixer answered that it had already finished. The lead never closed 52, and a `shutdown_request` then unassigned it. The notices reached the lead at 23:29Z, seven hours late (session 45851d0f). Same day, 23:45, here: researcher-2 took task 105 itself as the lowest free task and finished it, then the lead's "New task 105" message arrived and it answered "already finished, not redoing it". Self-claim plus a message from the lead crosses even when both name the right task.
+
+Changed: puppet-teams 0.3.2: the notice for an in_progress task says to mark it completed, or tell team-lead once and stop, or keep going. RULES.md: a spawn prompt that forbids TaskUpdate says "send team-lead one line with the task id", and the lead closes every finished task before any `shutdown_request`, since a shutdown unassigns open tasks. Open: the hook cannot see "already reported done", because the task files do not hold it.
+
+## 2026-11: the idle hook does not wake a teammate that is already idle
+
+`TeammateIdle` fires when a teammate goes idle. A teammate that was idle before its task was unblocked or assigned never triggers it, so only a message wakes it. Setting the owner sends one: see the 04:43 gap in [the earlier entry](#2026-11-an-assignment-by-message-crossed-the-teammates-idle-notice). Open: no hook fires when a task unblocks.
+
+## 2026-11: setting the owner on a blocked task wakes the teammate early
+
+The lead set owners ahead of time on tasks that were still blocked. Each owner set sends a `task_assignment` message, which woke the teammate while the task could not start (lead's report, 2026-11-20; the teammate's reply was not recorded). Issue #13 shows what a woken teammate may do next: set the blocked task to in_progress with `blockedBy` intact. Changed: puppet-teams 0.3.2 tells such a teammate to set the task back to pending. Open: whether to set the owner ahead or when the blocker completes is not decided.
+
+## 2026-11: a change to a finished task needs a new task
+
+Same scriptorium run: two builders, one reviewer, 15 tasks, two review rounds.
+
+- **A change to a completed task was lost.** The lead added a required scope change to task 9's description and messaged the builder. The builder had already marked task 9 completed, read the message as its old task, and answered "task 9 is already done". What worked was a new task with a new number (task 12) for the change, and a message that names only the new number. Every later change went the same way, and none was lost.
+- **"NEW task N, a different task" still crossed.** Five times a builder's idle notice predated the lead's assignment and said "already done" about the previous task. The builder picked up the new task on the next message each time. Read the timestamp before you resend.
+- **A test run while another teammate writes is not evidence.** The reviewer saw 4 lint failures, and a builder saw 3 hook failures, each while another builder was editing the same tree. Both were gone on a quiet rerun. The lead's final run was made with the team idle.
+- **The lead called the work ready before the last report.** The reviewer's last report, on the four files task 13 had been editing, arrived after the lead had told the owner the release was ready and had sent shutdowns. It found a real blocker: the migration skill wrote the status line last, so the new strict check failed every migrated document. The lead fixed it alone, and the fix shipped unreviewed.
+- **Reviews found what tests passed.** Both rounds FAILed with 48-52 green tests. They found promised checks that did not exist, a Stop hook that could loop (it ignored `stop_hook_active`), and the migration blocker.
+- **Tools.** Late in the run, `TaskList` and `TaskGet` returned empty for the reviewer, which worked from messages. A `TaskUpdate` that set the owner showed no owner in `TaskGet`. In a Code Mode session resumed after compaction, `Skill("puppet-teams:agent-teams")` answered "Unknown skill", while a fresh session listed it. The lead read the skill file instead.
+
+Changed: GUIDE, Review and Verify.
+
 ## 2026-11: an assignment by message crossed the teammate's idle notice
 
 In a scriptorium session, the lead spawned builder-1 and builder-2 with the same prompt and only then set owner builder-1 on task 1. In that gap builder-2 saw task 1 free, built it and marked it completed. builder-1 found it done and went idle. The lead's message "New task 2, not task 1 again" crossed that idle notice, and the lead's own `TaskUpdate` failed whole (`removeBlockedBy` is not a parameter), so task 2 had no owner and stayed blocked. builder-1 did read the message and finished task 2. Even so, the idle teammate was not woken by the task file, and nothing sent it back to the task list.
@@ -22,6 +53,14 @@ Checked against the official pages, about 60 claims held and 11 said too much: a
 Changed: those 11 lines, the animation's states and captions, and the README. An independent session did the audit, and the lead checked its quotes against the pages.
 
 Learned: re-read the docs for what a picture claims, not only the text. Not checked: what the linked articles say, beyond the links resolving.
+
+## 2026-11: a resumed lead kept running beside its old self
+
+The owner resumed a lead session in a second window while the first one was still running. Both held the same conversation, the same task list and the same worktrees, and both led. Each spawned its own builder or reviewer for the same pull request. One committed and pushed a fix round, created its task and posted its review. Minutes later the other assigned that same task to a new builder, which found the work already on the head. Both also ran the merge commands for two pull requests.
+
+The shared task list caught it: a task the lead had not created appeared in the list. The leads split the work by message, one pull request and its worktree to each, and then told each other what they owned.
+
+Open: no rule yet stops a second live lead. At start, a resumed lead should list the sessions on the machine and ask any session running the same conversation what it holds.
 
 ## 2026-11: sessions got the rules but did not start a team
 
@@ -58,6 +97,8 @@ In a Claude desktop (Code tab) session with both team variables set, the lead ha
 With no way to claim, two researchers both took task 1 and wrote the same file, minutes apart; the second write won. Two others edited task JSON files on disk before the lead's message arrived, then reverted. `SendMessage` to `team-lead` failed ("not reachable"); the agents reached the lead as `main`.
 
 Answer: the docs do not say. The agent-teams page covers terminals only, and the desktop page does not mention teams. The run itself showed subagents with message access, not teammates. The guide now has a section for the app: [`GUIDE.md`](GUIDE.md#in-the-desktop-app). In that app the lead marks every task itself and assigns the next task by message ("new task N, not task M again").
+
+2026-11-20: the desktop page says agent teams are CLI only (https://code.claude.com/docs/en/desktop), so the answer above is stale.
 
 ## 2026-11: CRLF files defeat patch scripts
 

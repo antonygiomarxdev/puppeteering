@@ -93,7 +93,7 @@ The type wins over the name. A teammate has type `teammate`, which is not a role
 | Ops | deploy, release, ci, infra | headphones, wrench |
 | Helper | anything else | scarf |
 
-The full table is in [`office-app/docs/characters.md`](office-app/docs/characters.md).
+The full table is in [`docs/monitor/ux/UX-01-characters.md`](docs/monitor/ux/UX-01-characters.md).
 
 ## 4. Read the office
 
