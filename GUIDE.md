@@ -84,7 +84,7 @@ The lead fills the shared task list. Teammates take the next free task.
 
 - **Team size:** Start with 3 to 5 teammates, with 5 to 6 tasks each (the docs). Past some point, more adds coordination faster than speed.
 - **A task** carries its brief, its files and how it is verified. A teammate does not inherit the lead's conversation.
-- **Dependencies** go on the task, because a blocked task is not self-claimed: a review waits for the push; a task that edits a file waits for the PR that also edits it.
+- **Dependencies** go on the task, because a blocked task is not self-claimed: a review waits for the push; a task that edits a file waits for the PR that also edits it. A teammate may still set a blocked task to in_progress with `blockedBy` intact (*observed*, [issue #13](https://github.com/antonygiomarxdev/puppeteering/issues/13)): spawn prompts should say "a task whose `blockedBy` is not empty is not free, even if it looks idle", and the lead checks the pile once right after spawning. A block clears when the blocking task completes, not when its PR merges ([issue #10](https://github.com/antonygiomarxdev/puppeteering/issues/10)); when a dependency needs the code on the base branch, block on a "Merge PR N" task owned by the lead (proposed there, not yet run).
 - **Give the lead's own tasks an owner**, or a teammate can claim them. Writing them down lets you see the whole queue with `Ctrl+T`.
 - **Name a role in the description**, such as "Builder." or "Reviewer.". With one teammate per role, spawn it with one instruction: take the lowest free task for your role.
 - **With several teammates of one role, assign by name before they start.** Set each task's owner before spawning, and name the task and its files in the spawn prompt. Tell the teammate not to claim other tasks and to stop when its own are done. An owner on the task alone did not stop a claim, and an owner set mid-run arrives too late.
@@ -93,6 +93,9 @@ The lead fills the shared task list. Teammates take the next free task.
 - **A brief names its output format and what the teammate must not touch.** Anthropic: "Each subagent needs an objective, an output format, guidance on the tools and sources to use, and clear task boundaries" ([multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)).
 - **Set the owner before the work starts.** The lead sets it before pointing anyone at a task, and a teammate sets it before its first edit. With several teammates of one role, a task with an empty owner gets built twice.
 - **An assignment by message must also set the owner on the task.** A message can cross the teammate's idle notice, and in the run seen the idle teammate was not woken. The task file holds the truth, and the `TeammateIdle` hook reads it. `TaskUpdate` has no `removeBlockedBy`; the agent-teams docs let the lead assign a blocked task anyway.
+- **A spec-driven pile hands a spec path, not a brief.** The description is the path of one approved small spec (rows quoted from its parent, at most 3 files, one done command). A teammate that needs a file outside the spec stops and asks, and the lead fixes the spec, not the report. *Observed* ([issue #11](https://github.com/antonygiomarxdev/puppeteering/issues/11)): briefs that retold the decision made builders optimise for the brief, and one touched six files where the spec named three. The lead runs the final gates on every system CI covers.
+- **One instruction per message, stated once, as the last line.** If you change your mind while writing, delete the first half before sending. *Observed* ([issue #14](https://github.com/antonygiomarxdev/puppeteering/issues/14)): an answer held "export it" and "leave both copies"; the builder had already exported, then reverted a file outside its spec.
+- **To pause a team, change the pile first,** then message: reassign or block every open task of that role. *Observed* ([issue #12](https://github.com/antonygiomarxdev/puppeteering/issues/12)): a "PAUSE now" message alone did not stop two builders; each took one or two more tasks. Moving the tasks to an owner no teammate has, then a shutdown request, did.
 
 Status: run with one researcher, one builder and one reviewer, each given no task by name, and each found, claimed and finished its tasks. Several of one role taking the lowest free task collided three times in one run, and the second write replaced the first; assigned by name in the spawn prompt, the next run wrote 24 files with none ([#5](https://github.com/antonygiomarxdev/puppeteering/issues/5)). Claiming [uses file locking](https://code.claude.com/docs/en/agent-teams#assign-and-claim-tasks), and the list kept one owner, so the loser wrote anyway: a teammate writes only after `TaskGet` shows it as the owner. The rule for how long a teammate lives is not settled; see [`LESSONS.md`](LESSONS.md).
 
@@ -110,15 +113,21 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 - Merges are serial when the base must be current: each merge makes the next PR re-integrate and re-check. Writing and reviewing scale; merging does not. Order the merges by what they unblock.
 - If the lead writes every brief by hand, the team is serial. A researcher drafts; the lead verifies the draft.
 - Watch the machine. Heavy checks in parallel compete for it, and a shared CI runner becomes a queue.
+- Before asking the owner, sort each open question: **Owner** (only the owner can answer: product, priority, money, risk), **Research** (a researcher answers it with sources) or **Lead** (the lead decides and records it). Close the last two first, then send the owner the Owner questions in one message, each with a recommendation. *Observed* ([issue #17](https://github.com/antonygiomarxdev/puppeteering/issues/17)): four questions went to the owner at once and one was researchable.
 
 ## Verify, do not relay
 
 - A report is a claim. Read its commands and output, then run the check again.
+- Telling a teammate to run the check is not the check. *Observed in another project* (mill, [lesson 13](https://github.com/antonygiomarxdev/mill/blob/main/LESSONS.md)): three Haiku agents whose briefs said "actually RUN these commands" reported "verified by inspection"; the code happened to be green, and the lead learned that only by running the commands itself.
+- Verify by running the behaviour, not by reading the shape of the result. *Observed in another project* (mill, [lesson 17](https://github.com/antonygiomarxdev/mill/blob/main/LESSONS.md)): tests asserted the configured `core.hooksPath` and never ran a hook, so every delegated worktree ran no hooks while they all passed. State the acceptance test as something observable: make a violating commit and assert it is rejected.
 - Give every task a check that returns pass or fail, and ask for the command and its output as evidence. Define success before the agent starts; see Osmani on [agentic verification](https://addyo.substack.com/p/agentic-verification).
 - A brief states only what was just run. Whoever writes it runs its start check, and names every file the change reaches.
 - Do not cite an issue, a spec or a page you have not opened.
 - A pull request says what was not verified, because a check always leaves something out.
 - Prove a test with a hand mutant: break the code, watch it fail, restore it.
+- A task that fixes a security bug says so, and its test stubs the dangerous call (set the override variable, or point `PATH` at a stub) instead of letting the real call happen. The reviewer checks that before running the suite. *Observed* ([issue #15](https://github.com/antonygiomarxdev/puppeteering/issues/15)): a test for "the hook never runs a package fetched by name" ran the real call and downloaded another project's package.
+- A test run while another teammate edits the same tree proves nothing. Make the final run with the team idle.
+- A change to a task already completed goes into a new task with a new number, not into the old task's description.
 
 ## Review
 
@@ -126,11 +135,12 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 - Review against a spec, and say to skip style: a reviewer asked to find problems always finds something.
 - Ask reviewers to run things, not to read them, and to report what they did not check.
 - The docs' example runs several reviewers on one PR, each with one lens (security, performance, tests).
+- Keep every reviewer until its last report is in. Do not call the work ready, or send shutdowns, before then.
 - Read the decisions an agent made, not only its summary. Accepting output because it looks right is what Osmani calls [cognitive surrender](https://addyosmani.com/blog/cognitive-surrender/).
 
 ## Put what must hold in a hook
 
-`CLAUDE.md` is context, and `command` and `http` hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences.
+`CLAUDE.md` is context, and `command` and `http` hooks are deterministic. If you keep adding emphasis to a line and it is still missed, make it a hook. Delete hooks that are only preferences. *Observed in another project* (mill, [lesson 10](https://github.com/antonygiomarxdev/mill/blob/main/LESSONS.md)): a skill said "you MUST spawn reviewer" and "coverage must be ≥90%"; the reviewer was never spawned and 85.5% coverage went on. A script that exits non-zero stops the work; a MUST in markdown does not.
 
 | Hook | Use |
 | --- | --- |
@@ -174,7 +184,7 @@ Say plainly when the process is not what the documents say.
 
 Not docs: the Claude desktop app (Code tab) ran named agents as subagents, not as teammates. One Windows 11 run showed it (see [`LESSONS.md`](LESSONS.md)). The lead had the Task tools. The agents had none, could not claim, and reached the lead as `main`, not `team-lead`.
 
-What the docs say: the agent-teams page describes in-process teammates and split panes in a terminal, and never names the desktop app. The desktop page never mentions agent teams or teammates; it lists a subagent pane. So the docs do not say whether the app supports teams. They say only that a subagent has the Task tools "only when your session has them", and that without them "an agent coordinates with its team through messages instead of the shared task list". The subagents page says that "in an interactive session with agent teams enabled", a subagent spawned with a `name` "launches as a teammate instead"; the app run did not match that, and the docs do not say why.
+What the docs say: the desktop page (https://code.claude.com/docs/en/desktop, read 2026-11-20) says "Agent teams: coordinated teams, where Claude as the team lead assigns tasks to teammates from a shared task list, are available in the CLI, not in Desktop." The run above agrees: named agents were subagents. A subagent has the Task tools "only when your session has them", and without them "an agent coordinates with its team through messages instead of the shared task list".
 
 So in the app, work as if you have subagents:
 
@@ -182,7 +192,7 @@ So in the app, work as if you have subagents:
 - The lead assigns by message, and names the task: "new task N, not task M again".
 - Each agent gets its own files, so two never write the same one. Nobody claims, so nothing else stops them.
 - Run `TaskList` as the first call in an agent. If it fails, the agent has no task tools: it reports by message and does not edit `~/.claude/tasks`.
-- For a real team with a shared list, use the terminal.
+- For a real team with a shared list, use the terminal. The desktop page names dynamic workflows for multi-agent work in Desktop; whether this method can use them is not researched.
 
 ## Known limits
 
