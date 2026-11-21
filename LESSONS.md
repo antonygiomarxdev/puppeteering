@@ -10,7 +10,7 @@ Scriptorium run, 2026-11-20, two Sonnet builders. The lead messaged "PAUSE now .
 
 On another project (rumai, 2026-11-20) the spawn prompt told ux-fixer "do not call TaskUpdate". It finished task 52 and could not close it. `idle.js` saw an owned in_progress task and sent "keep going on task 52" twice (guard file `ux-fixer:52` at 2); each time ux-fixer answered that it had already finished. The lead never closed 52, and a `shutdown_request` then unassigned it. The notices reached the lead at 23:29Z, seven hours late (session 45851d0f). Same day, 23:45, here: researcher-2 took task 105 itself as the lowest free task and finished it, then the lead's "New task 105" message arrived and it answered "already finished, not redoing it". Self-claim plus a message from the lead crosses even when both name the right task.
 
-Changed: on branch `teams-idle-done` (puppet-teams 0.3.2, not merged), the notice for an in_progress task says to mark it completed, or tell team-lead once and stop, or keep going. RULES.md: a spawn prompt that forbids TaskUpdate says "send team-lead one line with the task id", and the lead closes every finished task before any `shutdown_request`, since a shutdown unassigns open tasks. Open: the hook cannot see "already reported done", because the task files do not hold it.
+Changed: puppet-teams 0.3.2: the notice for an in_progress task says to mark it completed, or tell team-lead once and stop, or keep going. RULES.md: a spawn prompt that forbids TaskUpdate says "send team-lead one line with the task id", and the lead closes every finished task before any `shutdown_request`, since a shutdown unassigns open tasks. Open: the hook cannot see "already reported done", because the task files do not hold it.
 
 ## 2026-11: the idle hook does not wake a teammate that is already idle
 
@@ -18,7 +18,7 @@ Changed: on branch `teams-idle-done` (puppet-teams 0.3.2, not merged), the notic
 
 ## 2026-11: setting the owner on a blocked task wakes the teammate early
 
-The lead set owners ahead of time on tasks that were still blocked. Each owner set sends a `task_assignment` message, which woke the teammate while the task could not start (lead's report, 2026-11-20; the teammate's reply was not recorded). Issue #13 shows what a woken teammate may do next: set the blocked task to in_progress with `blockedBy` intact. Changed: puppet-teams 0.3.2 (not merged) tells such a teammate to set the task back to pending. Open: whether to set the owner ahead or when the blocker completes is not decided.
+The lead set owners ahead of time on tasks that were still blocked. Each owner set sends a `task_assignment` message, which woke the teammate while the task could not start (lead's report, 2026-11-20; the teammate's reply was not recorded). Issue #13 shows what a woken teammate may do next: set the blocked task to in_progress with `blockedBy` intact. Changed: puppet-teams 0.3.2 tells such a teammate to set the task back to pending. Open: whether to set the owner ahead or when the blocker completes is not decided.
 
 ## 2026-11: a change to a finished task needs a new task
 

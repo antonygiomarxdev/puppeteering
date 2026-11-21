@@ -21,4 +21,4 @@ The pile showed a builder task, a reviewer task and the tester task all in_progr
 One run, scriptorium, 2026-11-20, right after the pile was created. Not repeated.
 
 ## Decision
-Open. The idle hook in puppet-teams 0.3.2 (not merged) asks a teammate to set such a task back to pending, and RULES.md says so. The spawn-prompt line from the issue is not written. GUIDE, "The pile" cites this issue.
+Open. The idle hook in puppet-teams 0.3.2 asks a teammate to set such a task back to pending, and RULES.md says so. The spawn-prompt line from the issue is not written. GUIDE, "The pile" cites this issue.
