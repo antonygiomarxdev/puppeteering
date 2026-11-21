@@ -1,13 +1,14 @@
 # SPEC-01-6: The release workflow with changesets/action
 
-Status: Draft
+Status: Approved (2026-11-21)
+Approval: content 1UU4Pva_s8V6; rests on ../../requests/REQ-11-changesets-and-scriptorium-install.md -7r3Kd275stH
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
 
 A GitHub Actions workflow on push to main using the official `changesets/action` v2: it opens or updates a "Version Packages" pull request, and when that merges it tags `puppet-teams@X.Y.Z` and creates a GitHub release. No npm publish. Second of two release runs.
 
-Last change: 2026-11-21, drafted
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 

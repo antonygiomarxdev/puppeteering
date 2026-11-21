@@ -1,13 +1,14 @@
 # SPEC-01-5: Changesets cli 3, private package tags, and the plugin version sync
 
-Status: Draft
+Status: Approved (2026-11-21)
+Approval: content KjD9ZVTjuDGl; rests on ../../requests/REQ-11-changesets-and-scriptorium-install.md -7r3Kd275stH
 Rests on: ../../requests/REQ-11-changesets-and-scriptorium-install.md
 
 ## Summary
 
 The release action reads a file the changesets CLI writes (`CHANGESETS_OUTPUT`). The pinned cli 2.31.1 does not write it; cli 3.0.3 does (checked in its dist/index.mjs). So: move `@changesets/cli` to ^3, opt private packages in to versions and tags (puppet-teams is `private: true`), and keep `.claude-plugin/plugin.json` equal to `package.json` after `changeset version` with a `version` script. First of two release runs.
 
-Last change: 2026-11-21, drafted
+Last change: 2026-11-21, approved by the owner
 
 One spec is one agent run: at most 80 lines, 3 files and one done command. Too big: split it into another spec, never add context. A spec decides nothing new.
 
