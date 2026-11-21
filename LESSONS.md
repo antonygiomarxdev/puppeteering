@@ -2,6 +2,10 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+## 2026-11: a teammate that set itself as owner got its own assignment later
+
+A teammate that sets itself as owner of a task with TaskUpdate gets a `task_assignment` from itself, delivered after it has finished (researcher, task 122, 2026-11-21 00:28). Some crossings come from the tool, not from the lead. Rule: when a task_assignment names a task you already completed and you are the sender, say it is done and do not redo it.
+
 ## 2026-11: a task owner set on a running teammate crossed its report
 
 Setting the owner on a task a running teammate had already claimed itself sent a `task_assignment` that crossed its report. It happened 3 times on 2026-11-20 (tasks 105, 103, and 106/107/112). Rule: set the owner only for an idle teammate.
@@ -166,12 +170,4 @@ Builders sent their report with a message and then stopped, and stopping deliver
 
 Five builders had started background commands and gone idle waiting for a notice that does not come for a teammate. The lead told the owner they were working for about an hour, until the owner asked where things stood and the agent list showed otherwise. In the same days, each merge sent every other pull request back for a rebase and a new review, though the merge check already accepted a merge of the base without one.
 
-## 2026-11: several builders of one role duplicate work
-
-First run with three builders and one reviewer on one pile of about 40 tasks, with stacked pull requests. Three times, two builders built the same task: twice the lead pointed a builder at a task whose owner field was still empty while another builder had already started it, and once a builder saw a task as unowned although the lead had set an owner. Each time a full task's work was thrown away.
-
-Changed: the lead sets the owner on a task before pointing anyone at it, and a builder sets the owner before it writes a line. A builder that finds a branch for the task already in another worktree asks before it builds.
-
-Learned: "take the lowest free task" is not enough once the lead also assigns by hand. One of the two must own assignment. Messages also cross: a teammate's report often predates the lead's last message, so the lead must read the timestamp before acting on it.
-
-Also seen: the reviewer's hand mutants found real defects that all checks had passed (a lease that could not be taken after release, a supervisor that waited forever on stop, a foreign key that made a replace impossible to save, a trigger that a NULL let through). Running the architecture test on each branch merged with main found two specs that asked the domain to import a port.
+- 2026-11: several builders of one role duplicate work — archived in docs/retro/lessons/2026-11.md

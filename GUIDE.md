@@ -48,7 +48,7 @@ On those newer models, with only the first, a team exists and has no task list: 
 | Role | Model | Does |
 | --- | --- | --- |
 | Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a merged pull request |
-| Tester | Sonnet | Runs before the builder. Input is the spec path only, no code. Writes tests that name the row they cover and fail for the right reason; the builder may not edit them |
+| Tester | Sonnet | Runs before the builder. Input is the spec path; it works with no implementation: the spec, the public interface (signatures, types) and the test config only (D-31). Writes tests that name the row they cover and fail for the right reason; the builder may not edit them |
 | Builder | Sonnet (Haiku for a mechanical one-file task) | Writes code in the files its task names |
 | Reviewer | Sonnet | Independent review of a pushed head, by area (backend, frontend, hooks, docs, security). Never the author. Gates first, every FAIL cites a row or gate, at most 3 rounds, a binary verdict, check output pasted |
 | Researcher | Sonnet | Answers one question, or investigates a track and drafts its brief |
@@ -137,6 +137,7 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 - A reviewer is a session that did not write the code. The [best practices](https://code.claude.com/docs/en/best-practices) say why: it is not swayed by the reasoning that produced the code.
 - Review against a spec, and say to skip style: a reviewer asked to find problems always finds something.
 - Ask reviewers to run things, not to read them, and to report what they did not check.
+- A reviewer holds the method; the rules come from the project (D-30). Examples a project may adopt into its own docs: backend (dependency direction, error paths, negative examples tested), frontend (UI rules, screenshot, UX states), hooks (exit codes, `stop_hook_active`, Windows and Linux), docs (claims opened and linked, caps), security (the test stubs the dangerous call). No agent applies these by itself.
 - The docs' example runs several reviewers on one PR, each with one lens (security, performance, tests).
 - Keep every reviewer until its last report is in. Do not call the work ready, or send shutdowns, before then.
 - Read the decisions an agent made, not only its summary. Accepting output because it looks right is what Osmani calls [cognitive surrender](https://addyosmani.com/blog/cognitive-surrender/).

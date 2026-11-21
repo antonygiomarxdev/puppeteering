@@ -14,7 +14,7 @@ Decisions not yet absorbed: [DECISIONS.md](DECISIONS.md). Terms: [GLOSSARY.md](G
 
 Starting ten agents takes a minute; knowing that what they built is right takes all of the owner's attention (README, "Why this exists"). Runs of the method in this repo recorded these failures, each in LESSONS.md:
 
-- Three builders on one pile built the same task twice three times, because the owner was set late ([LESSONS.md, "2026-11: several builders of one role duplicate work"](../LESSONS.md#2026-11-several-builders-of-one-role-duplicate-work)).
+- Three builders on one pile built the same task twice three times, because the owner was set late ([archived lesson, "2026-11: several builders of one role duplicate work"](retro/lessons/2026-11.md#2026-11-several-builders-of-one-role-duplicate-work)).
 - A change to a task already marked done was lost: the builder answered "task 9 is already done" ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - Five times an assignment crossed the teammate's idle notice and the teammate said "already done" about the previous task ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
 - Both review rounds failed work that had 48 to 52 passing tests: promised checks that did not exist, and a stop rule that could loop ([LESSONS.md, "2026-11: a change to a finished task needs a new task"](../LESSONS.md#2026-11-a-change-to-a-finished-task-needs-a-new-task), a lesson from another session).
