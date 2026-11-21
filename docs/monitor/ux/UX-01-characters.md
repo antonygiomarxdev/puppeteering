@@ -1,10 +1,18 @@
-# Office characters: archetypes, states, ambient life
+# UX-01: Office characters: archetypes, states, ambient life
 
-Spec only. No code. Every agent is a Claude critter (body 10x7 cells, frame 44x30 px, pivot at the feet). Each kind of agent gets a costume, a prop, a walk and a few personalities, so the floor reads at a glance and feels alive.
+Status: Draft
+
+## Summary
+
+What the owner sees on the monitor's office floor: eight archetypes with a costume, prop and walk, a mood per agent state, the coordinator's own states, and ambient life. Written as a spec before the code; the code now exists (`Desk` in `office-app/src/types.ts`, `office/archetype.ts`, `office/mood.ts`, `scene/costumes.ts`) and was not compared row by row here. Moved from `office-app/docs/characters.md`; no FRD exists yet for it.
+
+Last change: 2026-11-20, moved into the chain as a draft with its open questions numbered
+
+Written as a spec before the code; the code now exists (see the Summary). Every agent is a Claude critter (body 10x7 cells, frame 44x30 px, pivot at the feet). Each kind of agent gets a costume, a prop, a walk and a few personalities, so the floor reads at a glance and feels alive.
 
 ## What the data gives today
 
-`Desk` in `src/types.ts`: `id`, `name`, `status`, `working`, `sleeping`, `alert` (`loop | stuck | quiet`), `task`, `said`, `doing`, `report`. `doing` is a string like `Edit: App.tsx` (from `summarize()` in `theatre.ts`). `board[].blocked` says a task has open dependencies. Not in the state today: agent `type`, `description`, the tool name as a field, whether a call waits for permission, whether a call is a long shell, who an agent last messaged.
+`Desk` in `src/types.ts`: `id`, `name`, `status`, `working`, `sleeping`, `alert` (`loop | stuck | quiet`), `task`, `said`, `doing`, `report`. `doing` is a string like `Edit: App.tsx` (from `summarize()` in `theatre.ts`). `board[].blocked` says a task has open dependencies. When this was written the state lacked agent `type`, `description`, the tool name as a field, whether a call waits for permission, whether a call is a long shell, and who an agent last messaged. That is out of date: `Desk` now has `type`, `description`, `kind`, `since`, `lastError`, `blockedBy`, `gone`, `thinking`, `timeline` and `files`.
 
 Assets today: `critter.json` frames `type-0/1`, `walk-{left,down,up}-{0,1}`, `idle`, `wink`, `asleep`, `talk-0..3`; `critter-gold` (shiny); `marks` (`crown`, `z`, `bang-red`, `bang-amber`).
 
@@ -122,5 +130,5 @@ A and B go first. C, D, E, F, G are independent of each other and can run in par
 
 ## 7. Open questions for the owner
 
-- Permission state needs a hook that sees permission requests; the mod may not receive one. If it cannot, drop that row and show the long-wait pose.
-- `gone` needs the mod to keep the last agent list between polls (a small change in task A).
+- Q-1 (Owner: the mod may not receive a permission hook): Permission state needs a hook that sees permission requests; the mod may not receive one. If it cannot, drop that row and show the long-wait pose.
+- Q-2 (Lead): `gone` needs the mod to keep the last agent list between polls (a small change in task A).
