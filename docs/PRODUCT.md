@@ -83,10 +83,11 @@ The owner is the only user (D-8). Coordinator and teammate are sessions the owne
 | UC-6 | Open the monitor on any surface | The owner opens the monitor from the terminal or the desktop app on any OS, and learns plainly when it could not open. |
 | UC-7 | Report what the method got wrong | The owner files a field report or docs mismatch, and the method changes with the run that shows it. |
 | UC-8 | Run a team in the desktop app | The owner gets the pile, roles, independent review and the monitor in the desktop app too, not only in the terminal (D-16). |
+| UC-9 | See the team in the herdr app | The owner sees each Claude Code agent herdr runs, with its status, its session's open tasks and its alerts, in a panel of the Herdr desktop app (D-33). |
 
 ## 6. Scope
 
-In this version: the written method (guide, onboarding, lessons, references), the rules add-on and the monitor. Platform: Claude Code first (D-12); other platforms are later and out of this version. The desktop app is in (D-16). Out: the demo video, sprite and social drafts (D-7), a coordinator of coordinators (D-6), anything that runs the agents for you (a scheduler or an orchestrator), peer-to-peer coordination between coordinators, general prompting advice, and any claim about a surface or OS that nobody ran.
+In this version: the written method (guide, onboarding, lessons, references), the rules add-on and the monitor. Platform: Claude Code first (D-12); other platforms are later and out of this version, except the Herdr desktop app panel (D-33). The desktop app is in (D-16). Out: the demo video, sprite and social drafts (D-7), a coordinator of coordinators (D-6), anything that runs the agents for you (a scheduler or an orchestrator), peer-to-peer coordination between coordinators, general prompting advice, and any claim about a surface or OS that nobody ran.
 
 ## 7. Slice map
 
@@ -95,6 +96,7 @@ In this version: the written method (guide, onboarding, lessons, references), th
 | method | `docs/method/` | The guide, onboarding, lessons, references and contributing | UC-1, UC-2, UC-7, UC-8 |
 | teams | `docs/teams/` | The rules add-on: session rules, reminder, idle redirect | UC-3, UC-4 |
 | monitor | `docs/monitor/` | The monitor, its band and its office page | UC-5, UC-6 |
+| herdr | `docs/herdr/` | The Herdr desktop app panel: a public monitor state file, the panel, its install | UC-9 |
 
 ## 8. Success criteria
 
