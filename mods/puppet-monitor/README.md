@@ -42,6 +42,35 @@ The `[open file]` link is Markdown, because remote surfaces (the desktop app, vs
 
 Not simulated in tests: a POSIX plugin root with the macOS and Linux openers (the harness root is a Windows path), and the vscode and mobile surfaces.
 
+## State file for other tools
+
+Each tick also writes `<home>/.claude/puppet-monitor/<folder>.json`, one file per working folder, so a tool outside Claude Code (the herdr panel) can read a session's tasks and alerts. Plain JSON, schema 1:
+
+| Field | Meaning |
+| --- | --- |
+| `schema` | `1` |
+| `key`, `cwd` | The session key, and its working folder, verbatim |
+| `at` | Epoch ms of the tick that wrote it |
+| `busy` | The lead is working |
+| `shared` | Another session wrote this file within the last 30 s |
+| `tasks` | `done`, `total`, and `open`: each open task with `id`, `subject`, `status`, `owner`, `blocked` |
+| `alerts` | `{ who, kind: loop \| stuck \| quiet, text }`, the same alerts the status line shows |
+
+- **Home** is `HOME`, else `USERPROFILE`. With neither, or on the hosted surface, no file is written. `CLAUDE_CONFIG_DIR` is ignored: the path is a contract.
+- **Staleness.** The file is rewritten about once a second. A reader ignores a file whose `at` is more than 30 s old. Files of ended sessions are not deleted.
+- **`normPath(p)`**: `\` becomes `/`, trailing `/` is stripped (`/` stays), and the result is lowercased when it starts with a drive letter (`/^[A-Za-z]:/`) or `//`.
+- **`folderKey(cwd)`**: FNV-1a 32 over the UTF-16 units of `normPath(cwd)`: `h = 0x811c9dc5`; per unit `h ^= unit; h = Math.imul(h, 0x01000193) >>> 0`; then `h.toString(16).padStart(8, '0')`.
+
+| `cwd` | `folderKey` |
+| --- | --- |
+| `C:\Users\anton\dev\puppeteering-herdr` and `c:/users/anton/dev/puppeteering-herdr/` | `27494bdf` |
+| `/home/a/proj` and `/home/a/proj/` | `5c92b791` |
+| `/` | `2a0c975e` |
+| `\\srv\Share\X` | `d1ce8abf` |
+
+- **Two sessions in one folder** write the same file; the later write wins, and `shared` tells a reader there is another. A third session is not told apart from a second.
+- Not verified live: that no other plugin's `fs.*` hook denies the write, `USERPROFILE` in the desktop app, and the hosted surface.
+
 ## What it changes
 
 It adds one sentence to the prompt of every agent spawned while it is loaded, asking the agent to say what it is about to do before each tool call. That is where the quotes come from, and it costs some tokens. The quotes are what an agent says it is doing, not its reasoning.

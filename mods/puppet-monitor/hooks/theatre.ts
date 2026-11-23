@@ -398,11 +398,47 @@ export function office(board: Board, cwd = '') {
   }
 }
 
-// STUB (tester, red gate): the builder replaces everything below with the SPEC-01-1 implementation.
-export type PublicState = Record<string, any>
-export function publicState(_board: any, _key: string, _cwd: string, _shared: boolean): PublicState { return {} }
-export function otherSeenAt(_previous: { key: string; at: number } | undefined, _key: string, _last?: number): number | undefined { return undefined }
-export const isShared = (_otherAt: number | undefined, _now: number): boolean => false
-export function normPath(_p: string): string { return '' }
-export function folderKey(_cwd: string): string { return '' }
-export const publicStatePath = (_home: string, _cwd: string): string => ''
+/** What other tools may read of a session: the office's tasks and alerts, nothing more. Schema 1, written to the contract path by the tick. */
+export type PublicState = {
+  schema: 1; key: string; cwd: string; at: number
+  busy: boolean; shared: boolean
+  tasks: { done: number; total: number; open: { id: string; subject: string; status: string; owner?: string; blocked: boolean }[] }
+  alerts: { who: string; kind: 'loop' | 'stuck' | 'quiet'; text: string }[]
+}
+
+export function publicState(board: Board, key: string, cwd: string, shared: boolean): PublicState {
+  const seen = office(board, cwd)
+  const alert = (who: string, found?: Alert) => (found ? [{ who, kind: found.kind, text: found.text }] : [])
+  return {
+    schema: 1, key, cwd, at: board.now,
+    busy: board.isLeadBusy, shared,
+    tasks: { ...seen.tasks, open: seen.board.filter(task => task.status !== 'completed') },
+    alerts: [
+      ...alert(LEAD, board.isLeadBusy ? alertOf(board.loops[LEAD], board.now) : undefined),
+      ...board.agents.flatMap(agent => alert(agent.name, isWorking(agent.status) ? alertOf(board.loops[agent.id], board.now) : undefined)),
+    ],
+  }
+}
+
+/** When another session last wrote the file: its `at` if `previous` is another session's, else what we already knew. */
+export function otherSeenAt(previous: { key: string; at: number } | undefined, key: string, last?: number): number | undefined {
+  return previous && previous.key !== key && (last === undefined || last < previous.at) ? previous.at : last
+}
+
+export const isShared = (otherAt: number | undefined, now: number): boolean => otherAt !== undefined && now - otherAt <= 30_000
+
+/** \ to /, no trailing /, lowercase on a drive or UNC path: the same folder gets the same name from either side. */
+export function normPath(p: string): string {
+  const slashed = p.replace(/\\/g, '/')
+  const bare = slashed.replace(/\/+$/, '') || (slashed ? '/' : '')
+  return /^([A-Za-z]:|\/\/)/.test(bare) ? bare.toLowerCase() : bare
+}
+
+/** FNV-1a 32 of the normalised path, as 8 hex digits: SPEC-01-2's panel repeats it. */
+export function folderKey(cwd: string): string {
+  let h = 0x811c9dc5
+  for (const unit of normPath(cwd)) for (let i = 0; i < unit.length; i++) h = Math.imul(h ^ unit.charCodeAt(i), 0x01000193) >>> 0
+  return h.toString(16).padStart(8, '0')
+}
+
+export const publicStatePath = (home: string, cwd: string): string => `${home.replace(/[\\/]+$/, '').replace(/\\/g, '/')}/.claude/puppet-monitor/${folderKey(cwd)}.json`
