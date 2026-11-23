@@ -1,7 +1,7 @@
 # SPEC-01-2: The herdr panel: match agents to sessions, and draw them
 
 Status: Approved (2026-11-23)
-Approval: content FyBsBdcHEOsq; rests on ../../requests/REQ-12-herdr-panel.md Y_wn_krhL6Fb
+Approval: content haZWbM--dE0B; rests on ../../requests/REQ-12-herdr-panel.md Y_wn_krhL6Fb
 Rests on: ../../requests/REQ-12-herdr-panel.md
 
 ## Summary
@@ -41,7 +41,7 @@ export const stateFile = (home, cwd) => `${home.replace(/[\\/]+$/, '').replace(/
 export function matchAgents(agents, panes, states, now) // -> { agent, session|null, shared }[]
 export function lineOf(match)                  // -> { name, status, count, open: string[], alerts: string[], note? }
 ```
-`main.js`: `default class Puppets extends View`; `init` starts `cx.timer.every(2000, ...)` unless `checking()`. Each tick: for every agent with `app === 'claude-code'` find its pane in `panes()`, `readTextFile(stateFile(home(), pane.cwd))`, `JSON.parse` it (null on a missing file or bad JSON), build `states`, call `matchAgents(agents(), panes(), states, Date.now())`, `cx.notify()`. Colours come from `theme()` (`working`, `blocked`, `done`, `idle`); a row click runs `run('agent.focus', { terminal: agent.address })`.
+`main.js`: `default class Puppets extends View`; `init` starts `cx.timer.every(2000, ...)` unless `checking()`. Each tick: for every agent with `app === 'claude-code'` find its pane in `panes()`, `readTextFile(stateFile(home(), pane.cwd))`, `JSON.parse` it (null on a missing file or bad JSON), build `states`, call `matchAgents(agents(), panes(), states, Date.now())` (it finds an agent's state by the key of `states` that ends with `/<folderKey(pane.cwd)>.json`, then checks the state's `cwd` as above), `cx.notify()`. Colours come from `theme()` (`working`, `blocked`, `done`, `idle`); a row click runs `run('agent.focus', { terminal: agent.address })`.
 
 ## Done when
 `node --test mods/puppet-herdr/match.test.js`
