@@ -275,6 +275,8 @@ test('an empty thinking block, as the engine sends it, is still recorded as thin
 
 // SPEC-01-1 (herdr/REQ-12): the tick writes the public per-session file next to state-<key>.js.
 const PUB = '/home/a/.claude/puppet-monitor/5c92b791.json' // folderKey('/home/a/proj'), HOME '/home/a'
+// On Windows the engine resolves a path before the fs hook sees it (C:\home\a\...): compare after \ to / and without a drive prefix, on every OS.
+const norm = (p: string) => p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '')
 
 // Starts a session in /home/a/proj with the given env, hosted flag and file reader; returns the clock and every write.
 async function publicTick($: any, on: any, opts: { env: Record<string, string | undefined>; hosted?: boolean; read?: (path: string) => string | undefined; key?: string; onPub?: (text: string) => void }) {
@@ -287,14 +289,14 @@ async function publicTick($: any, on: any, opts: { env: Record<string, string | 
   on('session.info', () => ({ value: { platform: 'linux', isHosted: opts.hosted ?? false } }))
   on('env.get', (_: unknown, e: any) => ({ value: opts.env[e.name ?? e.key ?? e.variable] }))
   on('fs.read', (_: unknown, e: any) => {
-    const text = opts.read?.(e.path)
+    const text = opts.read?.(norm(e.path))
     return text === undefined ? { deny: 'ENOENT: no such file' } : { value: text }
   })
   const writes: { path: string; text: string }[] = []
   on('fs.write', (_: unknown, e: any) => {
     const text = String(e.text ?? e.content ?? e.data ?? '')
-    writes.push({ path: e.path, text })
-    if (e.path === PUB) opts.onPub?.(text)
+    writes.push({ path: norm(e.path), text })
+    if (norm(e.path) === PUB) opts.onPub?.(text)
     return { value: undefined }
   })
   await $.session.start({ cwd: '/home/a/proj', surface: 'terminal', isInteractive: true })
@@ -314,7 +316,7 @@ test('covers: herdr/REQ-12/D-33 a tick writes the public file under HOME, with s
 test('covers: herdr/REQ-12/D-3 with HOME unset the public file goes under USERPROFILE', async ($, on) => {
   const t = await publicTick($, on, { env: { HOME: undefined, USERPROFILE: 'C:\\Users\\a' } })
   await t.clock.advance(1000)
-  expect(t.pub().at(-1)?.path).toBe('C:/Users/a/.claude/puppet-monitor/5c92b791.json')
+  expect(t.pub().at(-1)?.path).toBe('/Users/a/.claude/puppet-monitor/5c92b791.json') // C:/Users/a, drive dropped by norm
 })
 
 test('covers: herdr/REQ-12/D-3 with neither HOME nor USERPROFILE no public file is written, and state-<key>.js still is', async ($, on) => {
