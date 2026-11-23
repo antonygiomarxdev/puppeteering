@@ -397,3 +397,12 @@ export function office(board: Board, cwd = '') {
     history: board.history.slice(-HISTORY_SHOWN).reverse().map(event => ({ ...event, who: nameOf(event.who) })),
   }
 }
+
+// STUB (tester, red gate): the builder replaces everything below with the SPEC-01-1 implementation.
+export type PublicState = Record<string, any>
+export function publicState(_board: any, _key: string, _cwd: string, _shared: boolean): PublicState { return {} }
+export function otherSeenAt(_previous: { key: string; at: number } | undefined, _key: string, _last?: number): number | undefined { return undefined }
+export const isShared = (_otherAt: number | undefined, _now: number): boolean => false
+export function normPath(_p: string): string { return '' }
+export function folderKey(_cwd: string): string { return '' }
+export const publicStatePath = (_home: string, _cwd: string): string => ''

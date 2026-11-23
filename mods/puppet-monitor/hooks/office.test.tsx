@@ -272,3 +272,89 @@ test('an empty thinking block, as the engine sends it, is still recorded as thin
   expect(office.lead.said).toBe(undefined)
   expect(types(office.lead.timeline)).toEqual(['thought'])
 })
+
+// SPEC-01-1 (herdr/REQ-12): the tick writes the public per-session file next to state-<key>.js.
+const PUB = '/home/a/.claude/puppet-monitor/5c92b791.json' // folderKey('/home/a/proj'), HOME '/home/a'
+
+// Starts a session in /home/a/proj with the given env, hosted flag and file reader; returns the clock and every write.
+async function publicTick($: any, on: any, opts: { env: Record<string, string | undefined>; hosted?: boolean; read?: (path: string) => string | undefined; key?: string; onPub?: (text: string) => void }) {
+  const clock = mock.clock(on, { now: 1000 })
+  on('command.register', (_: unknown, e: { name: string }) => ({ value: { command: e.name } }))
+  on('session.start', (_: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: opts.key ?? 'me-1' }))
+  on('agent.list', () => ({ value: [] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('session.info', () => ({ value: { platform: 'linux', isHosted: opts.hosted ?? false } }))
+  on('env.get', (_: unknown, e: any) => ({ value: opts.env[e.name ?? e.key ?? e.variable] }))
+  on('fs.read', (_: unknown, e: any) => {
+    const text = opts.read?.(e.path)
+    return text === undefined ? { deny: 'ENOENT: no such file' } : { value: text }
+  })
+  const writes: { path: string; text: string }[] = []
+  on('fs.write', (_: unknown, e: any) => {
+    const text = String(e.text ?? e.content ?? e.data ?? '')
+    writes.push({ path: e.path, text })
+    if (e.path === PUB) opts.onPub?.(text)
+    return { value: undefined }
+  })
+  await $.session.start({ cwd: '/home/a/proj', surface: 'terminal', isInteractive: true })
+  return { clock, writes, pub: () => writes.filter(w => w.path === PUB || /[\\/]\.claude[\\/]puppet-monitor[\\/][0-9a-f]{8}\.json$/.test(w.path)) }
+}
+
+test('covers: herdr/REQ-12/D-33 a tick writes the public file under HOME, with schema 1, as well as state-<key>.js', async ($, on) => {
+  const t = await publicTick($, on, { env: { HOME: '/home/a' } })
+  await t.clock.advance(1000)
+  const last = t.pub().at(-1)
+  expect(last?.path).toBe(PUB)
+  const state = JSON.parse(last!.text)
+  expect(state).toMatchObject({ schema: 1, key: 'me-1', cwd: '/home/a/proj', shared: false })
+  expect(t.writes.some(w => /[\\/]office[\\/]state-me-1\.js$/.test(w.path))).toBe(true)
+})
+
+test('covers: herdr/REQ-12/D-3 with HOME unset the public file goes under USERPROFILE', async ($, on) => {
+  const t = await publicTick($, on, { env: { HOME: undefined, USERPROFILE: 'C:\\Users\\a' } })
+  await t.clock.advance(1000)
+  expect(t.pub().at(-1)?.path).toBe('C:/Users/a/.claude/puppet-monitor/5c92b791.json')
+})
+
+test('covers: herdr/REQ-12/D-3 with neither HOME nor USERPROFILE no public file is written, and state-<key>.js still is', async ($, on) => {
+  const t = await publicTick($, on, { env: {} })
+  await t.clock.advance(1000)
+  expect(t.writes.some(w => /[\\/]office[\\/]state-me-1\.js$/.test(w.path))).toBe(true)
+  expect(t.pub()).toEqual([])
+})
+
+test('covers: herdr/REQ-12/D-3 on the hosted surface no public file is written, and state-<key>.js still is', async ($, on) => {
+  const t = await publicTick($, on, { env: { HOME: '/home/a' }, hosted: true })
+  await t.clock.advance(1000)
+  expect(t.writes.some(w => /[\\/]office[\\/]state-me-1\.js$/.test(w.path))).toBe(true)
+  expect(t.pub()).toEqual([])
+})
+
+test('covers: herdr/REQ-12/D-3 a missing public file (the read rejects) is not an error', async ($, on) => {
+  const missing = await publicTick($, on, { env: { HOME: '/home/a' } })
+  await missing.clock.advance(2000)
+  expect(missing.pub().length).toBeGreaterThan(0)
+  expect(JSON.parse(missing.pub().at(-1)!.text).shared).toBe(false)
+})
+
+test('covers: herdr/REQ-12/D-3 an unparsable public file counts as none', async ($, on) => {
+  const t = await publicTick($, on, { env: { HOME: '/home/a' }, read: () => '{not json' })
+  await t.clock.advance(2000)
+  expect(t.pub().length).toBeGreaterThan(0)
+  expect(JSON.parse(t.pub().at(-1)!.text).shared).toBe(false)
+})
+
+test('covers: herdr/REQ-12/D-33 another fresh session\'s file gives shared true, still true on the next tick that reads its own write, false 30 001 ms after the other\'s last at', async ($, on) => {
+  let file: string | undefined = JSON.stringify({ schema: 1, key: 'other-9', cwd: '/home/a/proj', at: 1000, busy: false, shared: false, tasks: { done: 0, total: 0, open: [] }, alerts: [] })
+  // Whatever this session writes is what the next read returns, as on disk.
+  const t = await publicTick($, on, { env: { HOME: '/home/a' }, read: path => (path === PUB ? file : undefined), onPub: text => { file = text } })
+  await t.clock.advance(1000)
+  expect(JSON.parse(t.pub().at(-1)!.text)).toMatchObject({ key: 'me-1', shared: true })
+  await t.clock.advance(1000)
+  expect(JSON.parse(t.pub().at(-1)!.text)).toMatchObject({ key: 'me-1', shared: true })
+  await t.clock.advance(25000) // now 28000
+  expect(JSON.parse(t.pub().at(-1)!.text).shared).toBe(true)
+  await t.clock.advance(5000) // now 33000, more than 30 001 ms after the other's at 1000
+  expect(JSON.parse(t.pub().at(-1)!.text).shared).toBe(false)
+})
