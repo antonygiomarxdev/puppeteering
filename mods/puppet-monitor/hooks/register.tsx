@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Event, Loop, Task } from '../types'
-import { HISTORY_KEPT, LEAD, alerts, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, startThought, streamThought, summarize } from './theatre'
+import { HISTORY_KEPT, LEAD, alerts, isShared, otherSeenAt, publicState, publicStatePath, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, historyOf, kindOf, loopKey, moveTask, office, push, startCall, touch, remember, sentences, shellEnd, signature, startThought, streamThought, summarize } from './theatre'
 
 const TICK_MS = 1_000
 const STREAM_MS = 1_000
@@ -103,6 +103,9 @@ export const launcherUrl = (root: string, key: string): string => officeUrl(root
 
 export const register: Register = on => {
   let written = ''
+  // The last public file text written, and when another session's key was last read from it (its `at`): SPEC-01-1.
+  let writtenPublic = ''
+  let otherAt: number | undefined
   // This session's key, set at session.start and read again each tick: it names the state file and the office URL. /clear fires no session.start, so the tick is what sees a new session.
   let key = ''
   // The directory the session runs in: the office page names the project from it.
@@ -121,6 +124,7 @@ export const register: Register = on => {
       if (fresh !== key) {
         key = fresh
         written = ''
+        writtenPublic = ''
         await prepare($, key, cwd).catch(() => undefined)
       }
       const agents = (await $.agent.list()).map(agent => ({
@@ -143,6 +147,28 @@ export const register: Register = on => {
       if (text !== written) {
         written = text
         await $.fs.write(`${$.plugin.root}/${STATE(key)}`, text)
+      }
+      // The public file for other tools (the herdr panel): outside the plugin root, so a failure here never stops the tick.
+      try {
+        const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+        if (home && !(await $.session.info()).isHosted) {
+          const path = publicStatePath(home, cwd)
+          let previous: { key: string; at: number } | undefined
+          try {
+            const seen = JSON.parse(await $.fs.read(path))
+            if (typeof seen?.key === 'string' && typeof seen.at === 'number') previous = seen
+          } catch {
+            // A missing or unparsable file counts as none.
+          }
+          otherAt = otherSeenAt(previous, key, otherAt)
+          const pub = JSON.stringify(publicState(state, key, cwd, isShared(otherAt, state.now)))
+          if (pub !== writtenPublic) {
+            writtenPublic = pub
+            await $.fs.write(path, pub)
+          }
+        }
+      } catch {
+        // No home, no session.info or a denied write: the office still works.
       }
     })
 

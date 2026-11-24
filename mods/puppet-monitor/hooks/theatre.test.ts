@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Task } from '../types'
-import { GONE_MS, alertOf, alerts, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, historyOf, kindOf, moveTask, office, push, startCall, touch, sentences, shellEnd, signature, startThought, streamThought, summarize, taskOf } from './theatre'
+import { GONE_MS, alertOf, alerts, deliver, departures, dropScripts, endCall, endScripts, endThought, errorOf, folderKey, historyOf, isShared, kindOf, moveTask, normPath, office, otherSeenAt, publicState, publicStatePath, push, startCall, touch, sentences, shellEnd, signature, startThought, streamThought, summarize, taskOf } from './theatre'
 
 const MIN = 60_000
 const idle = { running: [], lastAt: 0, said: [] }
@@ -290,4 +290,144 @@ test('a script call seen twice is nested once', () => {
   const entry = board.timelines?.lead?.[0]
   expect(entry).toMatchObject({ what: 'Code: 1 calls' })
   expect(entry?.type === 'call' && entry.inner).toHaveLength(1)
+})
+
+// SPEC-01-1 (herdr/REQ-12): the public per-session state, its name function and the shared flag.
+const pubBoard = (over: object = {}) => ({
+  tasks: [
+    { id: '1', subject: 'Done thing', status: 'completed', blockedBy: [] },
+    { id: '2', subject: 'Open thing', status: 'in_progress', owner: 'builder', blockedBy: [] },
+    { id: '3', subject: 'Waiting thing', status: 'pending', blockedBy: ['2'] },
+  ],
+  history: [], shells: [], reports: {}, agents: [], loops: { lead: idle }, isLeadBusy: false, now: 7777, ...over,
+})
+
+test('covers: herdr/REQ-12/D-33 publicState has schema 1, the key and cwd verbatim, and at equal to board.now', () => {
+  const cwd = 'C:\\Users\\anton\\dev\\proj'
+  const state = publicState(pubBoard(), 'abc-1', cwd, false)
+  expect(state.schema).toBe(1)
+  expect(state.key).toBe('abc-1')
+  expect(state.cwd).toBe(cwd)
+  expect(state.at).toBe(7777)
+  expect(state.shared).toBe(false)
+  expect(publicState(pubBoard(), 'k', cwd, true).shared).toBe(true)
+})
+
+test('covers: herdr/REQ-12/D-2 tasks.done and total count, and tasks.open lists only the open ones with their fields', () => {
+  const state = publicState(pubBoard(), 'k', '/p', false)
+  expect(state.tasks.done).toBe(1)
+  expect(state.tasks.total).toBe(3)
+  expect(state.tasks.open).toEqual([
+    { id: '2', subject: 'Open thing', status: 'in_progress', owner: 'builder', blocked: false },
+    { id: '3', subject: 'Waiting thing', status: 'pending', owner: undefined, blocked: true },
+  ])
+})
+
+test('covers: herdr/REQ-12/D-2 publicState carries busy from isLeadBusy', () => {
+  expect(publicState(pubBoard({ isLeadBusy: true }), 'k', '/p', false).busy).toBe(true)
+  expect(publicState(pubBoard({ isLeadBusy: false }), 'k', '/p', false).busy).toBe(false)
+})
+
+test('covers: herdr/REQ-12/D-2 a looping agent gives a loop alert named by the agent', () => {
+  const agents = [{ id: 'b', name: 'builder', description: '', status: 'running' }]
+  const board = pubBoard({ agents, loops: { lead: idle, b: { ...idle, lastAt: 7777, repeat: { sig: 'x', count: 3 } } } })
+  expect(publicState(board, 'k', '/p', false).alerts).toEqual([{ who: 'builder', kind: 'loop', text: 'LOOPING 3x' }])
+})
+
+test('covers: herdr/REQ-12/D-2 a busy lead that is quiet gives who lead and kind quiet; an idle lead and an idle agent give none', () => {
+  const quiet = pubBoard({ isLeadBusy: true, now: 15 * MIN })
+  expect(publicState(quiet, 'k', '/p', false).alerts).toEqual([{ who: 'lead', kind: 'quiet', text: 'QUIET 15m00s' }])
+  const agents = [{ id: 'c', name: 'waiter', description: '', status: 'idle' }]
+  const calm = pubBoard({ isLeadBusy: false, now: 15 * MIN, agents, loops: { lead: idle, c: idle } })
+  expect(publicState(calm, 'k', '/p', false).alerts).toEqual([])
+})
+
+test('covers: herdr/REQ-12/D-2 the alert list equals what alerts(board) prints', () => {
+  const agents = [
+    { id: 'b', name: 'builder', description: '', status: 'running' },
+    { id: 'l', name: 'looper', description: '', status: 'running' },
+  ]
+  const board = pubBoard({ agents, isLeadBusy: true, now: 15 * MIN, loops: { lead: idle, b: idle, l: { ...idle, lastAt: 15 * MIN, repeat: { sig: 'x', count: 4 } } } })
+  const printed = alerts(board)
+  expect(printed.length).toBeGreaterThan(1)
+  expect(publicState(board, 'k', '/p', false).alerts.map((a: { who: string; text: string }) => a.who + ' ' + a.text)).toEqual(printed)
+})
+
+test('covers: herdr/REQ-12/D-2 an empty board gives empty lists', () => {
+  const state = publicState(pubBoard({ tasks: [] }), 'k', '/p', false)
+  expect(state.tasks).toEqual({ done: 0, total: 0, open: [] })
+  expect(state.alerts).toEqual([])
+})
+
+test('covers: herdr/REQ-12/D-3 the state survives a JSON round trip unchanged', () => {
+  const state = publicState(pubBoard(), 'k', 'C:\\p', true)
+  expect(state.schema).toBe(1)
+  expect(JSON.parse(JSON.stringify(state))).toEqual(state)
+})
+
+test('covers: herdr/REQ-12/D-3 the state holds no thinking text, timeline or file list', () => {
+  const board = pubBoard({
+    loops: { lead: { ...idle, said: ['SECRET-SAID'] } },
+    timelines: { lead: [{ type: 'thought', text: 'SECRET-THOUGHT' }, { type: 'call', what: 'Edit: SECRET-FILE.ts' }] },
+  })
+  const state = publicState(board, 'k', '/p', false)
+  expect(Object.keys(state).sort()).toEqual(['alerts', 'at', 'busy', 'cwd', 'key', 'schema', 'shared', 'tasks'])
+  expect(JSON.stringify(state)).not.toContain('SECRET')
+})
+
+test('covers: herdr/REQ-12/D-33 otherSeenAt keeps the other session\'s at while this session reads its own write', () => {
+  expect(otherSeenAt({ key: 'b', at: 5 }, 'a', undefined)).toBe(5)
+  expect(otherSeenAt({ key: 'b', at: 5 }, 'a', 3)).toBe(5)
+  expect(otherSeenAt({ key: 'b', at: 5 }, 'a', 5)).toBe(5)
+  expect(otherSeenAt({ key: 'b', at: 5 }, 'a', 9)).toBe(9)
+  expect(otherSeenAt({ key: 'a', at: 50 }, 'a', 5)).toBe(5)
+  expect(otherSeenAt({ key: 'a', at: 50 }, 'a', undefined)).toBe(undefined)
+  expect(otherSeenAt(undefined, 'a', 7)).toBe(7)
+  expect(otherSeenAt(undefined, 'a')).toBe(undefined)
+})
+
+test('covers: herdr/REQ-12/D-33 isShared holds for 30 000 ms and not 30 001, and is false with no other', () => {
+  expect(isShared(0, 30000)).toBe(true)
+  expect(isShared(0, 30001)).toBe(false)
+  expect(isShared(1000, 1000)).toBe(true)
+  expect(isShared(undefined, 0)).toBe(false)
+})
+
+test('covers: herdr/REQ-12/D-33 shared does not flap: it stays true over own writes until 30 001 ms, then falls, and a new write by the other raises it', () => {
+  let file: { key: string; at: number } | undefined = { key: 'b', at: 0 }
+  let otherAt: number | undefined
+  const tick = (t: number) => {
+    otherAt = otherSeenAt(file, 'a', otherAt)
+    const shared = isShared(otherAt, t)
+    file = { key: 'a', at: t } // this session writes the file, so the next read is its own
+    return shared
+  }
+  for (let t = 0; t <= 30000; t += 1000) expect(tick(t)).toBe(true)
+  expect(tick(30001)).toBe(false)
+  expect(tick(35000)).toBe(false)
+  file = { key: 'b', at: 40000 }
+  expect(tick(40000)).toBe(true)
+})
+
+test('covers: herdr/REQ-12/D-3 normPath turns \\ into /, strips a trailing /, keeps the root, and lowercases drive and UNC paths only', () => {
+  expect(normPath('C:\\Users\\Anton\\Dev\\')).toBe('c:/users/anton/dev')
+  expect(normPath('c:/users/anton/dev/')).toBe('c:/users/anton/dev')
+  expect(normPath('/home/A/Proj/')).toBe('/home/A/Proj')
+  expect(normPath('/')).toBe('/')
+  expect(normPath('\\\\srv\\Share\\X')).toBe('//srv/share/x')
+})
+
+test('covers: herdr/REQ-12/D-3 folderKey gives the same 8 hex digits for the vectors the panel repeats', () => {
+  expect(folderKey('C:\\Users\\anton\\dev\\puppeteering-herdr')).toBe('27494bdf')
+  expect(folderKey('c:/users/anton/dev/puppeteering-herdr/')).toBe('27494bdf')
+  expect(folderKey('/home/a/proj')).toBe('5c92b791')
+  expect(folderKey('/home/a/proj/')).toBe('5c92b791')
+  expect(folderKey('/')).toBe('2a0c975e')
+  expect(folderKey('\\\\srv\\Share\\X')).toBe('d1ce8abf')
+})
+
+test('covers: herdr/REQ-12/D-3 publicStatePath joins home, .claude/puppet-monitor and the folder key, with / only', () => {
+  expect(publicStatePath('C:\\Users\\a\\', 'C:\\p')).toBe('C:/Users/a/.claude/puppet-monitor/' + folderKey('C:\\p') + '.json')
+  expect(publicStatePath('/home/a/', '/home/a/proj')).toBe('/home/a/.claude/puppet-monitor/5c92b791.json')
+  expect(publicStatePath('/home/a', '/home/a/proj')).toBe('/home/a/.claude/puppet-monitor/5c92b791.json')
 })
