@@ -2,6 +2,10 @@
 
 Newest first. Each one is something a real run showed. A rule in the guide changes when a run shows it wrong, and the run goes here.
 
+A new entry has five lines in this order (REQ-15, checked by `node tools/lessons-check.mjs`): `Cue:` the shape of the situation, not this run's facts; `Lesson:` an operation on a named rule, hook or role; `Evidence:` the runs, and the RC-n rows of [the rule ledger](docs/retro/rule-ledger.md) it rests on; `Confidence:` high, medium or low, and why; `Status:` observed, or adopted once the lesson is a rule.
+
+<!-- Entries below use the earlier format. -->
+
 ## 2026-11: a teammate that set itself as owner got its own assignment later
 
 A teammate that sets itself as owner of a task with TaskUpdate gets a `task_assignment` from itself, delivered after it has finished (researcher, task 122, 2026-11-21 00:28). Some crossings come from the tool, not from the lead. Rule: when a task_assignment names a task you already completed and you are the sender, say it is done and do not redo it.

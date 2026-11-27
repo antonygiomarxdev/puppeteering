@@ -26,7 +26,13 @@ The owner, 2026-11-27, after the lead read google-research/harness2.
 - Unknown: how many current rules would pass this bar; the first spec audits them.
 
 ## Decision
-Accepted. To specify:
-- LESSONS.md entries take four fields: Cue (the shape of the situation, not this run's facts), Lesson (an operation on a named rule, hook or role), Evidence (the runs and the contrast), Confidence (high, medium, low, and why). Old entries stay as they are, marked as the earlier format.
-- A ledger of rule changes: one row per changed rule, hook or role, with what changed, what the next run showed, and the verdict. `confounded` whenever more than one rule changed or one run is all there is.
-- The gate: a rule enters the guide, RULES.md or a hook only on a lesson whose evidence holds at least one row that is not `confounded`. An observation seen once stays in LESSONS.md as observed.
+Accepted. The rows below are what the specs build (docs/method/specs/).
+
+- LS-1: An entry of LESSONS.md is a `## ` heading and the lines under it. Every entry above the line `<!-- Entries below use the earlier format. -->` has five lines that start, in this order, `Cue:`, `Lesson:`, `Evidence:`, `Confidence:` and `Status:`. Entries below that line are not checked, and with no such line no entry is checked.
+- LS-2: `Confidence:` is followed by `high`, `medium` or `low`, then a reason. `Status:` is followed by `observed` or `adopted` and nothing else.
+- LS-3: docs/retro/rule-ledger.md holds one table with the header `| ID | Date | Changed | Seen in | Verdict |`. Each ID is `RC-` and a number, used once. Each Verdict is `helped`, `hurt`, `no observed effect` or `confounded`. A missing file is an empty ledger.
+- LS-4: An entry with `Status: adopted` cites in its Evidence line at least one RC-n that is in the ledger with a verdict other than `confounded`. An RC-n cited by any entry and missing from the ledger fails.
+- LS-5: `node tools/lessons-check.mjs` exits 0 when LS-1 to LS-4 hold for the files in the folder it runs in, and otherwise exits 1 and prints one line per failure, `<file>: <entry heading or RC-n>: <what is wrong>`.
+- LS-6: LESSONS.md states the five-field format in its opening lines, and the earlier-format line sits above its first existing entry.
+- LS-7: GUIDE.md, in "Put what must hold in a hook", says a lesson becomes a rule, a RULES.md line or a hook only with `Status: adopted`, and that a change to a rule adds an RC-n row, `confounded` when more than one rule changed or one run is all there is.
+- LS-8: docs/retro/rule-ledger.md opens with a summary of the verdicts and holds the ledger table with at least one row taken from a run already recorded.

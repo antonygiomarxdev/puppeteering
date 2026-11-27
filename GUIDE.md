@@ -156,6 +156,8 @@ While an independent task is ready, it runs. What stops one is a shared file, an
 
 puppet-teams enforces `TeammateIdle` (since 0.3.0, `hooks/idle.js`): an idle teammate with an open task, owned by it or free with its role as the subject prefix, gets exit 2 and `new task N: <subject>, not task M again`. It nudges twice per task, then lets the teammate idle. Exit code 2 blocks and sends stderr back. Keep `CLAUDE.md` short, under 200 lines, and move procedures to [skills](https://code.claude.com/docs/en/skills).
 
+A lesson becomes a rule, a `RULES.md` line or a hook only with `Status: adopted`, and only on an RC-n row of [the rule ledger](docs/retro/rule-ledger.md) whose verdict is not `confounded`. Every change to a rule adds an RC-n row: `confounded` when more than one rule changed or one run is all there is.
+
 ## Cost
 
 Token use grows with each active teammate; the [costs page](https://code.claude.com/docs/en/costs) says about 7 times a normal session when teammates run in plan mode.
