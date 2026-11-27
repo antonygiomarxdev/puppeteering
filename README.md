@@ -173,7 +173,7 @@ flowchart LR
 | Checks run by script | "A report is a claim": the check everyone reruns |
 | The rework queue | Where a lesson becomes a check |
 
-Each works alone. This repo writes its own documents with Scriptorium ([`docs/`](docs)).
+Each works alone. Google's [Harness²](https://github.com/google-research/harness2) improves an agent with two editors kept apart, one for how the agent works and one for what a practitioner knows. Puppeteering is the first lens; Scriptorium is the second. This repo writes its own documents with Scriptorium ([`docs/`](docs)).
 
 ## What's inside
 
