@@ -23,7 +23,8 @@ const PROTECTED = /^(?:\+?(?:refs\/heads\/)?(main|master)|.*:(?:refs\/heads\/)?(
 
 // Shell text to commands of plain words, the way the shell splits them: quotes and backslashes join a word
 // (`ma"in"` is main, `-C "my dir"` one value), a # starts a comment only at the start of a word outside quotes,
-// and ; & | ( ) ` $( and newlines end a command outside quotes. A redirection's target is dropped.
+// and ; & | ( ) ` $( <( >( and newlines end a command outside quotes; $( ) and backticks inside double quotes
+// are read as commands too. A redirection's target is dropped.
 // Text a shell runs (bash -c "...", eval ...) is read again as commands; other quoted text, a commit message, is not.
 const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
 // The text a command hands to a shell: the argument after -c of a shell, or what follows eval.
@@ -41,7 +42,24 @@ function shellText(words) {
   return found;
 }
 
+// Past this, the gate denies instead of guessing: a command it cannot read in time must not slip through.
+const MAX_LENGTH = 100000;
+const MAX_DEPTH = 8;
+class Unreadable extends Error {}
+
+// The text between an opening $( at i (pointing at '(') and its closing ), parens nested; the index after it.
+function closeParen(text, i) {
+  let level = 0;
+  for (let j = i; j < text.length; j++) {
+    if (text[j] === '\\') { j++; continue; }
+    if (text[j] === '(') level++;
+    else if (text[j] === ')' && --level === 0) return [text.slice(i + 1, j), j];
+  }
+  return [text.slice(i + 1), text.length];
+}
+
 function segments(command, depth = 0) {
+  if (depth > MAX_DEPTH) throw new Unreadable('nested too deep');
   const out = [];
   let words = [];
   let word = '';
@@ -61,7 +79,7 @@ function segments(command, depth = 0) {
     endWord();
     if (words.length) {
       out.push(words);
-      if (depth < 3) for (const inner of shellText(words)) out.push(...segments(inner, depth + 1));
+      for (const inner of shellText(words)) out.push(...segments(inner, depth + 1));
     }
     words = [];
   };
@@ -73,11 +91,27 @@ function segments(command, depth = 0) {
       let j = i + 1;
       for (; j < command.length && command[j] !== '"'; j++) {
         if (command[j] === '\\' && j + 1 < command.length && '"\\$`'.includes(command[j + 1])) j++;
+        else if (command[j] === '$' && command[j + 1] === '(') {
+          // Command substitution runs inside double quotes too: read its text as commands.
+          const [inner, end] = closeParen(command, j + 1);
+          out.push(...segments(inner, depth + 1));
+          word += command.slice(j, end + 1);
+          j = end;
+          continue;
+        } else if (command[j] === '`') {
+          let end = j + 1;
+          while (end < command.length && command[end] !== '`') end += command[end] === '\\' ? 2 : 1;
+          out.push(...segments(command.slice(j + 1, end), depth + 1));
+          word += command.slice(j, end + 1);
+          j = end;
+          continue;
+        }
         word += command[j];
       }
       quoted = true; i = j; continue;
     }
     if (c === '#' && word === '' && !quoted) { const j = command.indexOf('\n', i); i = j < 0 ? command.length : j - 1; continue; }
+    if ((c === '>' || c === '<') && command[i + 1] === '(') { endCommand(); i++; continue; } // <( ) and >( ) run a command
     if (c === '>' || c === '<') {
       if (/^\d*$/.test(word) && !quoted) word = '';
       endWord();
@@ -99,13 +133,23 @@ const GIT_VALUE_OPTS = new Set(['-C', '-c', '--git-dir', '--work-tree', '--names
 
 // A git push whose refspecs after the remote name main or master as the target.
 function pushesToMain(command) {
+  if (command.length > MAX_LENGTH) throw new Unreadable('too long');
   for (const words of segments(command)) {
-    for (let i = words.indexOf('git'); i >= 0; i = words.indexOf('git', i + 1)) {
+    // One pass: each push's arguments run to the next git word, so the scan stays linear in the command's length.
+    for (let i = words.indexOf('git'); i >= 0; ) {
+      const next = words.indexOf('git', i + 1);
+      const stop = next < 0 ? words.length : next;
       let k = i + 1;
-      while (k < words.length && words[k].startsWith('-')) k += GIT_VALUE_OPTS.has(words[k]) && !words[k].includes('=') ? 2 : 1;
-      if (words[k] !== 'push') continue;
-      const args = words.slice(k + 1).filter((w) => !w.startsWith('-'));
-      if (args.slice(1).some((ref) => PROTECTED.test(ref))) return true;
+      while (k < stop && words[k].startsWith('-')) k += GIT_VALUE_OPTS.has(words[k]) && !words[k].includes('=') ? 2 : 1;
+      if (words[k] === 'push') {
+        let remote = false;
+        for (let a = k + 1; a < stop; a++) {
+          if (words[a].startsWith('-')) continue;
+          if (!remote) { remote = true; continue; }
+          if (PROTECTED.test(words[a])) return true;
+        }
+      }
+      i = next;
     }
   }
   return false;
@@ -118,7 +162,12 @@ function decide(input, setting) {
   if (MERGE_TOOL.test(tool)) return { reason: REASON };
   if (tool !== 'Bash') return null;
   const command = String((input.tool_input && input.tool_input.command) || '');
-  if (/\bgh\s+pr\s+merge\b/.test(command) || pushesToMain(command)) return { reason: REASON };
+  try {
+    if (/\bgh\s+pr\s+merge\b/.test(command) || pushesToMain(command)) return { reason: REASON };
+  } catch (e) {
+    if (e instanceof Unreadable) return { reason: 'The merge gate could not read this command (' + e.message + '), so it is denied. ' + REASON };
+    throw e;
+  }
   return null;
 }
 

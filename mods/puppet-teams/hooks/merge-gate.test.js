@@ -204,3 +204,34 @@ test('covers: merge/REQ-18/MG-1 the hook reads the setting from CLAUDE_PROJECT_D
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+// Added by the builder after review round 3 (FAIL on MG-2): command substitution inside double quotes and process
+// substitution hid a push, and a long line could run past the hook's timeout. Unreadable input is now denied.
+test('covers: merge/REQ-18/MG-2 under owner, substitutions inside quotes and <( ) do not hide a push to main', () => {
+  const { decide } = gate();
+  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+  for (const c of [
+    'out="$(git push origin main 2>&1)"; echo "$out"',
+    'echo "pushed: $(git push -u origin main)"',
+    'echo "`git push origin main`"',
+    'cat <(git push origin main)',
+    'diff <(git push origin main) x',
+    'eval git push origin main',
+  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
+  for (const c of ['git push origin feature > main', 'echo "$(git log main)"'])
+    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + c);
+});
+
+test('covers: merge/REQ-18/MG-2 under owner, a command too long or nested too deep to read is denied, fast', () => {
+  const { decide } = gate();
+  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+  let t = Date.now();
+  assert.strictEqual(decide(bash('git push origin x '.repeat(5000)), 'owner'), null, '90 KB of pushes elsewhere is allowed');
+  assert.ok(Date.now() - t < 2000, 'read in under 2 s');
+  t = Date.now();
+  assert.ok(decide(bash('a'.repeat(100001)), 'owner'), 'over 100 000 characters is denied');
+  assert.ok(Date.now() - t < 2000, 'denied in under 2 s');
+  let nested = 'git push origin main';
+  for (let i = 0; i < 12; i++) nested = 'bash -c ' + JSON.stringify(nested);
+  assert.ok(decide(bash(nested), 'owner'), 'twelve shells deep is denied');
+});
