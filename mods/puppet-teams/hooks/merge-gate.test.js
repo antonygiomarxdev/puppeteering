@@ -143,51 +143,64 @@ test('covers: merge/REQ-18/MG-2 the hooks.json PreToolUse command denies gh pr m
   }
 });
 
-// Added by the builder after review round 1 (FAIL on MG-2): pushes to main wrapped in shell syntax got through,
-// and two commands that push elsewhere were denied.
-test('covers: merge/REQ-18/MG-2 under owner, pushes to main or master in shell wrappers are denied', () => {
+// Added by the builder when the owner amended MG-2 to a coarse word rule (2026-11-28), after four reviews found a new
+// bypass after each shell-parser fix. These replace the builder's earlier parser tests; the tester's tests above stand.
+const shellCall = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+
+test('covers: merge/REQ-18/MG-2 under owner, push with main or master is denied in any shell form', () => {
   const { decide } = gate();
-  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
   for (const c of [
     'git push origin master',
+    '/usr/bin/git push origin main',
+    'git --config-env x=Y push origin main',
     'bash -c "git push origin main"',
-    "sh -c 'git push origin main'",
-    '(git push origin main)',
-    '$(git push origin main)',
-    '`git push origin main`',
-    'git push origin main>/dev/null',
-    'git push origin main 2>&1',
-    'git push origin main&',
-    'git -C . push origin main',
-    'git -c k=v push origin main',
-    'git --no-pager push origin main',
-  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
-});
-
-test('covers: merge/REQ-18/MG-2 under owner, a later line or a comment naming main is not a push to main', () => {
-  const { decide } = gate();
-  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
-  for (const c of ['git push origin feature\necho main', 'git push origin feature # main', 'git push origin main-fix', 'git log main'])
-    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + JSON.stringify(c));
-});
-
-// Added by the builder after review round 2 (FAIL on MG-2): a quoted # dropped the rest of the line, and a quoted
-// option value with a space split in two. The gate now splits shell text the way the shell does.
-test('covers: merge/REQ-18/MG-2 under owner, quoted text does not hide a push to main', () => {
-  const { decide } = gate();
-  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
-  for (const c of [
-    'git commit -m "fix #12" && git push origin main',
-    "git commit -m 'close #4'; git push origin main",
-    'git -C "my dir" push origin main',
-    "git -C 'a b' push origin main",
-    'bash -c "git push origin \\"main\\""',
-    'git push origin ma"in"',
-    "git push origin ma''in",
+    'out="$(git push origin main 2>&1)"',
+    'cat <(git push origin main)',
+    "git push origin $'main'",
+    'git push origin ma{i,}n',
     'git push origin m\\ain',
-  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
-  for (const c of ['git commit -m "git push origin main"', 'echo "# git push origin main"', 'git push origin feature 2>&1 # main'])
-    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + c);
+    'GIT${IFS}PUSH${IFS}origin${IFS}main',
+    'b=main; git push origin $b',
+    'echo main | xargs git push origin',
+    'cat <<E\nit\'s done\nE\ngit push origin main',
+    'git push origin &>/dev/null main',
+  ]) assert.ok(decide(shellCall(c), 'owner'), 'denied: ' + c);
+});
+
+test('covers: merge/REQ-18/MG-2 under owner, gh or pulls with merge is denied in any form', () => {
+  const { decide } = gate();
+  for (const c of ['gh --repo o/r pr merge 1', 'gh -R o/r pr merge 1', 'gh pr \\\nmerge 1', 'gh "pr" merge 1', 'gh api -X PUT repos/o/r/pulls/1/merge', 'curl -X PUT https://api.github.com/repos/o/r/pulls/1/merge'])
+    assert.ok(decide(shellCall(c), 'owner'), 'denied: ' + c);
+});
+
+test('covers: merge/REQ-18/MG-2 under owner, a command that only mentions the words is denied, and the reason says to rewrite it', () => {
+  const { decide } = gate();
+  const d = decide(shellCall('git commit -m "never git push origin main"'), 'owner');
+  assert.ok(d, 'denied');
+  assert.match(d.reason, /rewrite/i);
+});
+
+test('covers: merge/REQ-18/MG-2 under owner, everyday commands are allowed', () => {
+  const { decide } = gate();
+  for (const c of [
+    'git push origin feature',
+    'git push -u origin claude/practical-ptolemy-yb5icg',
+    'git push origin main-fix',
+    'git log main',
+    'git merge origin/main',
+    'git commit -m "update main.js"',
+    'gh pr view 12',
+    'gh pr merge-queue-status',
+    'npm run build',
+    'a'.repeat(200000),
+  ]) assert.strictEqual(decide(shellCall(c), 'owner'), null, 'allowed: ' + c.slice(0, 60));
+});
+
+test('covers: merge/REQ-18/MG-2 a long command is judged fast', () => {
+  const { decide } = gate();
+  const t = Date.now();
+  assert.strictEqual(decide(shellCall('git push origin x '.repeat(50000)), 'owner'), null);
+  assert.ok(Date.now() - t < 2000, 'under 2 s');
 });
 
 test('covers: merge/REQ-18/MG-1 the hook reads the setting from CLAUDE_PROJECT_DIR before the call\'s folder', () => {
@@ -205,33 +218,8 @@ test('covers: merge/REQ-18/MG-1 the hook reads the setting from CLAUDE_PROJECT_D
   }
 });
 
-// Added by the builder after review round 3 (FAIL on MG-2): command substitution inside double quotes and process
-// substitution hid a push, and a long line could run past the hook's timeout. Unreadable input is now denied.
-test('covers: merge/REQ-18/MG-2 under owner, substitutions inside quotes and <( ) do not hide a push to main', () => {
-  const { decide } = gate();
-  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
-  for (const c of [
-    'out="$(git push origin main 2>&1)"; echo "$out"',
-    'echo "pushed: $(git push -u origin main)"',
-    'echo "`git push origin main`"',
-    'cat <(git push origin main)',
-    'diff <(git push origin main) x',
-    'eval git push origin main',
-  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
-  for (const c of ['git push origin feature > main', 'echo "$(git log main)"'])
-    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + c);
-});
-
-test('covers: merge/REQ-18/MG-2 under owner, a command too long or nested too deep to read is denied, fast', () => {
-  const { decide } = gate();
-  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
-  let t = Date.now();
-  assert.strictEqual(decide(bash('git push origin x '.repeat(5000)), 'owner'), null, '90 KB of pushes elsewhere is allowed');
-  assert.ok(Date.now() - t < 2000, 'read in under 2 s');
-  t = Date.now();
-  assert.ok(decide(bash('a'.repeat(100001)), 'owner'), 'over 100 000 characters is denied');
-  assert.ok(Date.now() - t < 2000, 'denied in under 2 s');
-  let nested = 'git push origin main';
-  for (let i = 0; i < 12; i++) nested = 'bash -c ' + JSON.stringify(nested);
-  assert.ok(decide(bash(nested), 'owner'), 'twelve shells deep is denied');
+test('covers: merge/REQ-18/MG-5 the README says what the hook cannot see and how to turn on branch protection', () => {
+  const low = fs.readFileSync(readme, 'utf8').toLowerCase();
+  for (const s of ['cannot see', 'variable', 'alias', 'branch protection', 'require approvals', 'require a pull request before merging'])
+    assert.ok(low.includes(s), 'README holds "' + s + '"');
 });

@@ -19,7 +19,20 @@ Who merges a pull request is set per project in `.puppeteering/config.json`, in 
 - `owner`, the default: the agents review the pull request and the reviewer ends with `Merge: recommend` or `Merge: do not merge`; you merge. A missing or unreadable file, a missing key or any other value also means `owner`.
 - `auto`: the lead merges once the gates and the review pass.
 
-Under `owner`, `hooks/merge-gate.js` runs on `PreToolUse` and denies the calls that merge: `gh pr merge`, a `git push` whose target is `main` or `master`, and any tool whose name ends in `merge_pull_request` or `enable_pr_auto_merge`. Everything else is allowed. It sees only the agents' calls: a merge you make in the browser is yours.
+Under `owner`, `hooks/merge-gate.js` runs on `PreToolUse` and denies a Bash command that holds the word `push` with `main` or `master`, or the word `merge` with `gh` or `pulls`, in any case, with quotes, backslashes, braces and `$` ignored; and any tool whose name ends in `merge_pull_request` or `enable_pr_auto_merge`. It reads words, not shell syntax, on purpose: every attempt to parse bash left a new way around it. So `gh pr merge 3`, `git push origin main` and `bash -c "git push origin main"` are denied, and so is a commit message that only mentions a push to main: the agent is told to rewrite it.
+
+What the hook cannot see: a branch name held in a variable or produced by a command, a git alias, a bare `git push` while on main, and a merge made through the API by another program. It is a guard rail for the agents, not a lock.
+
+### The real gate: branch protection on GitHub
+
+To make sure nothing reaches `main` without your approval, protect the branch on GitHub:
+
+1. On the repository, open **Settings**, then **Branches** (or **Rules**, then **Rulesets**).
+2. Add a rule for `main`.
+3. Turn on **Require a pull request before merging** and **Require approvals** (at least 1), and **Require review from Code Owners** if you use a CODEOWNERS file.
+4. Leave **Allow bypass** off for the accounts or apps the agents use.
+
+With that rule, an agent cannot push to `main` or merge without your approval, whatever command it runs. Under `auto`, keep the rule but allow the merge once the required checks pass.
 
 ## Install
 

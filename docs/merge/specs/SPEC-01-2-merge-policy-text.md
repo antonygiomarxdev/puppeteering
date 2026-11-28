@@ -1,7 +1,7 @@
 # SPEC-01-2: The reviewer recommends, the lead waits
 
 Status: Approved (2026-11-28)
-Approval: content b9xBAcQ1mEkq; rests on ../../requests/REQ-18-the-owner-chooses-how-merges-happen.md QWTa4VYG7ywI
+Approval: content b9xBAcQ1mEkq; rests on ../../requests/REQ-18-the-owner-chooses-how-merges-happen.md r4fanrF5I0UZ
 Rests on: ../../requests/REQ-18-the-owner-chooses-how-merges-happen.md
 
 ## Summary
