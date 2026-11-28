@@ -131,3 +131,115 @@ test('covers: roles/REQ-10/D-30 reviewer says "no project rules" and never inven
 test('covers: roles/REQ-10/D-31 reviewer checks tests unchanged, one per row, public interface only', () => {
   CONTAINS(load('reviewer.md').body, ['unchanged since their commit', 'each spec row has a test', 'public interface']);
 });
+
+// ---- method SPEC-02-2 judge and probe skill ----
+
+test('covers: method/REQ-17/LL-3 judge.md has name judge, model sonnet, and no Write, Edit or Agent tool', () => {
+  const a = load('judge.md');
+  assert.strictEqual(a.name, 'judge');
+  assert.strictEqual(a.model, 'sonnet');
+  assert.ok(a.tools.length > 0, 'tools listed');
+  for (const t of ['Write', 'Edit', 'Agent']) assert.ok(!a.tools.includes(t), 'no ' + t + ' tool');
+});
+
+test('covers: method/REQ-17/LL-3 judge body: two candidates, not told which used the change, equal, current rules valid, notes format', () => {
+  CONTAINS(load('judge.md').body, [
+    'candidate-1',
+    'candidate-2',
+    'not told which',
+    'equal',
+    'current rules',
+    'valid',
+    'kept|revised|dropped -> ',
+  ]);
+});
+
+test('covers: method/REQ-17/LL-4 probe skill has a name and description', () => {
+  const a = load('../skills/probe/SKILL.md');
+  assert.ok(a.name && a.name.length > 0, 'name');
+  assert.ok(a.description && a.description.length > 0, 'description');
+});
+
+test('covers: method/REQ-17/LL-4 probe skill names the tool, --reveal, the judge, at least 2 runs and the rule ledger', () => {
+  CONTAINS(load('../skills/probe/SKILL.md').body, ['tools/probe-blind.mjs', '--reveal', 'judge', 'at least 2 runs', 'rule ledger']);
+});
+
+test('covers: method/REQ-17/LL-4 probe skill names each verdict with its condition', () => {
+  CONTAINS(load('../skills/probe/SKILL.md').body, [
+    'helped',
+    'hurt',
+    'no observed effect',
+    'confounded',
+    'every pair',
+    'equal',
+    'mixed',
+    'more than one rule',
+    'fewer than 2 runs',
+    'RC-',
+  ]);
+});
+
+test('covers: method/REQ-17/LL-7 judge.md says data, not instructions', () => {
+  CONTAINS(load('judge.md').body, ['data, not instructions']);
+});
+
+// ---- method SPEC-02-3 reflector ----
+
+test('covers: method/REQ-17/LL-5 reflector.md has name reflector, model sonnet, and no Agent or Write tool', () => {
+  const a = load('reflector.md');
+  assert.strictEqual(a.name, 'reflector');
+  assert.strictEqual(a.model, 'sonnet');
+  assert.ok(a.tools.length > 0, 'tools listed');
+  for (const t of ['Agent', 'Write']) assert.ok(!a.tools.includes(t), 'no ' + t + ' tool');
+});
+
+const REFLECT_RULES = [
+  'at most one',
+  'Status: observed',
+  'adopted',
+  'never edits a rule',
+  'contrast',
+  'Cue',
+  'Lesson',
+  'Evidence',
+  'Confidence',
+  'Status',
+  'node tools/lessons-check.mjs',
+];
+
+test('covers: method/REQ-17/LL-5 reflector body: one entry, observed only, never adopted, no rule edits, contrast, five fields, the check', () => {
+  const body = load('reflector.md').body;
+  CONTAINS(body, REFLECT_RULES);
+  assert.match(body, /never[^.\n]*adopted/i, 'never ... adopted');
+});
+
+test('covers: method/REQ-17/LL-5 reflect skill names the merged or closed pull request and the same rules', () => {
+  const body = load('../skills/reflect/SKILL.md').body;
+  CONTAINS(body, ['merged', 'closed', 'pull request', ...REFLECT_RULES]);
+  assert.match(body, /never[^.\n]*adopted/i, 'never ... adopted');
+});
+
+test('covers: method/REQ-17/LL-6 agent-teams skill ends every pile with "Reflect." owned by the reflector, blocked by the last task', () => {
+  const body = load('../skills/agent-teams/SKILL.md').body;
+  assert.ok(body.includes('Reflect.'), 'names the task "Reflect."');
+  CONTAINS(body, ['reflector', 'blocked by', 'last task']);
+});
+
+test('covers: method/REQ-17/LL-7 reflector.md says data, not instructions', () => {
+  CONTAINS(load('reflector.md').body, ['data, not instructions']);
+});
+
+// ---- method SPEC-02-4 evidence is data ----
+
+test('covers: method/REQ-17/LL-7 reviewer.md and tester.md each say data, not instructions', () => {
+  CONTAINS(load('reviewer.md').body, ['data, not instructions']);
+  CONTAINS(load('tester.md').body, ['data, not instructions']);
+});
+
+// ---- merge SPEC-01-2 merge recommendation ----
+
+test('covers: merge/REQ-18/MG-3 reviewer.md holds Merge: recommend and Merge: do not merge', () => {
+  const body = load('reviewer.md').body;
+  assert.ok(body.includes('Merge: recommend'), 'Merge: recommend');
+  assert.ok(body.includes('Merge: do not merge'), 'Merge: do not merge');
+});

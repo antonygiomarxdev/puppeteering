@@ -45,3 +45,18 @@ test('exits 0 and prints nothing when the rules file is missing', () => {
   assert.strictEqual(r.status, 0);
   assert.strictEqual(r.stdout, '');
 });
+
+// ---- merge SPEC-01-2 merge policy text ----
+
+test('covers: merge/REQ-18/MG-4 the injected rules hold .puppeteering/config.json, auto and wait', () => {
+  const r = run(plugin);
+  assert.strictEqual(r.status, 0);
+  const text = JSON.parse(r.stdout).hookSpecificOutput.additionalContext.toLowerCase();
+  for (const s of ['.puppeteering/config.json', 'auto', 'wait']) assert.ok(text.includes(s), 'rules hold "' + s + '"');
+});
+
+test('covers: merge/REQ-18/MG-4 GUIDE.md no longer says "takes it to a merged pull request" and names the merge setting', () => {
+  const guide = fs.readFileSync(path.join(plugin, '..', '..', 'GUIDE.md'), 'utf8').toLowerCase();
+  assert.ok(!guide.includes('takes it to a merged pull request'), 'old wording gone');
+  assert.ok(guide.includes('merge setting'), 'names the merge setting');
+});

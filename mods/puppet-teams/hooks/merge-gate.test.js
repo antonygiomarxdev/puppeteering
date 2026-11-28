@@ -1,0 +1,124 @@
+const { test, after } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { spawnSync } = require('child_process');
+
+const hook = path.join(__dirname, 'merge-gate.js');
+const readme = path.join(__dirname, '..', 'README.md');
+const made = [];
+after(() => made.forEach((d) => fs.rmSync(d, { recursive: true, force: true })));
+
+// Required per test, so a missing module fails each test on its own and the README test still runs.
+const gate = () => require('./merge-gate.js');
+
+// A project folder; config is a string written as .puppeteering/config.json, or undefined for none.
+function project(config) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pt-merge-'));
+  made.push(root);
+  if (config !== undefined) {
+    fs.mkdirSync(path.join(root, '.puppeteering'));
+    fs.writeFileSync(path.join(root, '.puppeteering', 'config.json'), config);
+  }
+  return root;
+}
+const bash = (command, cwd) => ({ tool_name: 'Bash', tool_input: { command }, cwd });
+const tool = (name, cwd) => ({ tool_name: name, tool_input: {}, cwd });
+function run(input) {
+  assert.ok(fs.existsSync(hook), 'merge-gate.js exists');
+  return spawnSync(process.execPath, [hook], { input: typeof input === 'string' ? input : JSON.stringify(input), encoding: 'utf8' });
+}
+
+const DENIED = [
+  bash('gh pr merge 12 --squash'),
+  bash('git push origin main'),
+  bash('git push origin HEAD:master'),
+  bash('git push -u origin main'),
+  tool('mcp__github__merge_pull_request'),
+  tool('mcp__github__enable_pr_auto_merge'),
+];
+const ALLOWED = [
+  bash('git push origin feature/main-menu'),
+  bash('git push origin claude/x'),
+  bash('gh pr view 12'),
+  bash('git merge origin/main'),
+  tool('mcp__github__get_merge_status'),
+];
+const label = (i) => i.tool_name === 'Bash' ? i.tool_input.command : i.tool_name;
+
+// MG-1
+test('covers: merge/REQ-18/MG-1 mergeSetting gives owner with no config file', () => {
+  assert.strictEqual(gate().mergeSetting(project()), 'owner');
+});
+
+test('covers: merge/REQ-18/MG-1 mergeSetting gives owner for a file that is not JSON', () => {
+  assert.strictEqual(gate().mergeSetting(project('not json {')), 'owner');
+});
+
+test('covers: merge/REQ-18/MG-1 mergeSetting gives owner with no merge key', () => {
+  assert.strictEqual(gate().mergeSetting(project('{"other": "auto"}')), 'owner');
+});
+
+test('covers: merge/REQ-18/MG-1 mergeSetting gives owner for "merge": "never"', () => {
+  assert.strictEqual(gate().mergeSetting(project('{"merge": "never"}')), 'owner');
+});
+
+test('covers: merge/REQ-18/MG-1 mergeSetting gives owner for "merge": "owner"', () => {
+  assert.strictEqual(gate().mergeSetting(project('{"merge": "owner"}')), 'owner');
+});
+
+test('covers: merge/REQ-18/MG-1 mergeSetting gives auto only for "merge": "auto"', () => {
+  assert.strictEqual(gate().mergeSetting(project('{"merge": "auto"}')), 'auto');
+});
+
+// MG-2
+test('covers: merge/REQ-18/MG-2 under owner the merge calls are denied with a reason naming the setting and the recommendation', () => {
+  const { decide } = gate();
+  for (const input of DENIED) {
+    const d = decide(input, 'owner');
+    assert.ok(d && typeof d.reason === 'string', 'denied: ' + label(input));
+    const low = d.reason.toLowerCase();
+    for (const s of ['merge setting', 'owner', 'recommendation']) assert.ok(low.includes(s), label(input) + ' reason names "' + s + '"');
+  }
+});
+
+test('covers: merge/REQ-18/MG-2 under owner other calls are allowed', () => {
+  const { decide } = gate();
+  for (const input of ALLOWED) assert.strictEqual(decide(input, 'owner'), null, 'allowed: ' + label(input));
+});
+
+test('covers: merge/REQ-18/MG-2 under auto the merge calls are allowed', () => {
+  const { decide } = gate();
+  for (const input of DENIED) assert.strictEqual(decide(input, 'auto'), null, 'allowed under auto: ' + label(input));
+});
+
+test('covers: merge/REQ-18/MG-2 stdin that is not JSON exits 0 with no output', () => {
+  const r = run('not json {');
+  assert.strictEqual(r.status, 0);
+  assert.strictEqual(r.stdout, '');
+});
+
+// MG-1 through the hook: the setting comes from the project folder in cwd.
+test('covers: merge/REQ-18/MG-1 the hook run in a project whose config says auto allows gh pr merge', () => {
+  const r = run(bash('gh pr merge 12 --squash', project('{"merge": "auto"}')));
+  assert.strictEqual(r.status, 0);
+  assert.strictEqual(r.stdout, '');
+});
+
+test('covers: merge/REQ-18/MG-1 the hook run in a project whose config says owner denies gh pr merge', () => {
+  const r = run(bash('gh pr merge 12 --squash', project('{"merge": "owner"}')));
+  assert.strictEqual(r.status, 0);
+  const out = JSON.parse(r.stdout).hookSpecificOutput;
+  assert.strictEqual(out.hookEventName, 'PreToolUse');
+  assert.strictEqual(out.permissionDecision, 'deny');
+  assert.ok(out.permissionDecisionReason && out.permissionDecisionReason.length > 0, 'a reason');
+});
+
+// MG-5
+test('covers: merge/REQ-18/MG-5 the README documents the merge setting, its values and gh pr merge', () => {
+  const text = fs.readFileSync(readme, 'utf8');
+  assert.match(text, /^#+ Merge setting\s*$/im, 'a "Merge setting" heading');
+  const low = text.toLowerCase();
+  for (const s of ['.puppeteering/config.json', 'owner', 'auto', 'gh pr merge']) assert.ok(low.includes(s), 'README holds "' + s + '"');
+});
