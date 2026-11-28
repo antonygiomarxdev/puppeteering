@@ -142,3 +142,31 @@ test('covers: merge/REQ-18/MG-2 the hooks.json PreToolUse command denies gh pr m
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Added by the builder after review round 1 (FAIL on MG-2): pushes to main wrapped in shell syntax got through,
+// and two commands that push elsewhere were denied.
+test('covers: merge/REQ-18/MG-2 under owner, pushes to main or master in shell wrappers are denied', () => {
+  const { decide } = gate();
+  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+  for (const c of [
+    'git push origin master',
+    'bash -c "git push origin main"',
+    "sh -c 'git push origin main'",
+    '(git push origin main)',
+    '$(git push origin main)',
+    '`git push origin main`',
+    'git push origin main>/dev/null',
+    'git push origin main 2>&1',
+    'git push origin main&',
+    'git -C . push origin main',
+    'git -c k=v push origin main',
+    'git --no-pager push origin main',
+  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
+});
+
+test('covers: merge/REQ-18/MG-2 under owner, a later line or a comment naming main is not a push to main', () => {
+  const { decide } = gate();
+  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+  for (const c of ['git push origin feature\necho main', 'git push origin feature # main', 'git push origin main-fix', 'git log main'])
+    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + JSON.stringify(c));
+});

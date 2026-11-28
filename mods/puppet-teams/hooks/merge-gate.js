@@ -21,14 +21,31 @@ function mergeSetting(root) {
 const MERGE_TOOL = /(merge_pull_request|enable_pr_auto_merge)$/;
 const PROTECTED = /^(?:\+?(?:refs\/heads\/)?(main|master)|.*:(?:refs\/heads\/)?(main|master))$/;
 
+// Shell text to plain words: comments dropped, then every separator, subshell, quote and redirection made a break,
+// so `bash -c "git push origin main"`, `(git push origin main)` and `git push origin main>/dev/null` read as plain commands.
+function segments(command) {
+  return command
+    .split('\n')
+    .map((line) => line.replace(/(^|\s)#.*$/, '$1'))
+    .join('\n')
+    .replace(/\d*[<>]+&?\d*\S*/g, ' ')
+    .split(/[\n;&|()`]|\$\(/)
+    .map((seg) => seg.replace(/["']/g, ' ').trim().split(/\s+/).filter(Boolean));
+}
+
+// git's own options before the subcommand; these take a value.
+const GIT_VALUE_OPTS = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path']);
+
 // A git push whose refspecs after the remote name main or master as the target.
 function pushesToMain(command) {
-  for (const part of command.split(/&&|\|\||;|\|/)) {
-    const words = part.trim().split(/\s+/);
-    const i = words.findIndex((w, k) => w === 'push' && words[k - 1] === 'git');
-    if (i < 0) continue;
-    const args = words.slice(i + 1).filter((w) => !w.startsWith('-'));
-    if (args.slice(1).some((ref) => PROTECTED.test(ref.replace(/^['"]|['"]$/g, '')))) return true;
+  for (const words of segments(command)) {
+    for (let i = words.indexOf('git'); i >= 0; i = words.indexOf('git', i + 1)) {
+      let k = i + 1;
+      while (k < words.length && words[k].startsWith('-')) k += GIT_VALUE_OPTS.has(words[k]) && !words[k].includes('=') ? 2 : 1;
+      if (words[k] !== 'push') continue;
+      const args = words.slice(k + 1).filter((w) => !w.startsWith('-'));
+      if (args.slice(1).some((ref) => PROTECTED.test(ref))) return true;
+    }
   }
   return false;
 }
@@ -54,7 +71,7 @@ function run() {
   process.stdin.on('end', () => {
     try {
       const input = JSON.parse(raw.replace(/^\uFEFF/, ''));
-      const d = decide(input, mergeSetting(input.cwd || process.cwd()));
+      const d = decide(input, mergeSetting(process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd()));
       if (d) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: d.reason } }));
     } catch (e) {
       // Not parseable: not a call this hook judges.

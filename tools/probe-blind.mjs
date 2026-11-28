@@ -20,6 +20,8 @@ function blind(base, change, out) {
   if (!isDir(base)) fail(`${base} is not a folder`)
   if (!isDir(change)) fail(`${change} is not a folder`)
   if (fs.existsSync(out) && (!isDir(out) || fs.readdirSync(out).length)) fail(`${out} exists and is not empty`)
+  const inside = (a, b) => { const r = path.relative(path.resolve(b), path.resolve(a)); return r === '' || (!r.startsWith('..') && !path.isAbsolute(r)) }
+  for (const src of [base, change]) if (inside(out, src) || inside(src, out)) fail(`${out} must not be inside ${src}, nor hold it`)
   const key = assign()
   const src = { base, change }
   fs.mkdirSync(out, { recursive: true })
@@ -31,6 +33,7 @@ function blind(base, change, out) {
 function reveal(out) {
   let key
   try { key = JSON.parse(fs.readFileSync(keyOf(out), 'utf8')) } catch { fail(`no readable key at ${keyOf(out)}`) }
+  if (!key || typeof key !== 'object') fail(`${keyOf(out)} does not hold a key`)
   for (const c of ['candidate-1', 'candidate-2']) {
     if (key[c] !== 'base' && key[c] !== 'change') fail(`${keyOf(out)} does not say what ${c} is`)
     console.log(`${c}: ${key[c]}`)
