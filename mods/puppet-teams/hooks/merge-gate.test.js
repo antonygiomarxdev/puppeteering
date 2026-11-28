@@ -189,6 +189,7 @@ test('covers: merge/REQ-18/MG-2 under owner, everyday commands are allowed', () 
     'git log main',
     'git merge origin/main',
     'git commit -m "update main.js"',
+    'git push origin main.js-fix',
     'gh pr view 12',
     'gh pr merge-queue-status',
     'npm run build',
@@ -220,6 +221,6 @@ test('covers: merge/REQ-18/MG-1 the hook reads the setting from CLAUDE_PROJECT_D
 
 test('covers: merge/REQ-18/MG-5 the README says what the hook cannot see and how to turn on branch protection', () => {
   const low = fs.readFileSync(readme, 'utf8').toLowerCase();
-  for (const s of ['cannot see', 'variable', 'alias', 'branch protection', 'require approvals', 'require a pull request before merging'])
+  for (const s of ['cannot see', 'variable', 'alias', 'branch protection', 'require approvals', 'require a pull request before merging', 'do not allow bypassing', 'bypass list', 'own identity', 'author'])
     assert.ok(low.includes(s), 'README holds "' + s + '"');
 });

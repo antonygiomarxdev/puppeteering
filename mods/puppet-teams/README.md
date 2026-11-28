@@ -25,14 +25,16 @@ What the hook cannot see: a branch name held in a variable or produced by a comm
 
 ### The real gate: branch protection on GitHub
 
-To make sure nothing reaches `main` without your approval, protect the branch on GitHub:
+The hook only guards the agents' own calls. To make sure nothing reaches `main` without your approval, protect the branch on GitHub.
 
-1. On the repository, open **Settings**, then **Branches** (or **Rules**, then **Rulesets**).
-2. Add a rule for `main`.
-3. Turn on **Require a pull request before merging** and **Require approvals** (at least 1), and **Require review from Code Owners** if you use a CODEOWNERS file.
-4. Leave **Allow bypass** off for the accounts or apps the agents use.
+**First, give the agents their own identity.** GitHub never counts the approval of a pull request's author. If the agents push and open pull requests with your login, you cannot approve them, and as an admin they can bypass the rule. Let them work as a separate account or a GitHub App (for example the Claude GitHub App), with write access, and keep your own account for approving.
 
-With that rule, an agent cannot push to `main` or merge without your approval, whatever command it runs. Under `auto`, keep the rule but allow the merge once the required checks pass.
+**Then add the rule**, either way:
+
+- *Ruleset:* **Settings**, **Rules**, **Rulesets**, **New branch ruleset**. Target `main`, turn on **Require a pull request before merging** with **Required approvals** set to 1, and leave the **Bypass list** empty.
+- *Classic:* **Settings**, **Branches**, **Add branch protection rule** for `main`. Turn on **Require a pull request before merging** and **Require approvals** (1), and turn on **Do not allow bypassing the above settings**, so admins are held too.
+
+With that rule, and the agents on their own identity, nothing lands on `main` without your approval. Under `auto`, require status checks (**Require status checks to pass**) instead of approvals, so the agents can merge once the checks pass.
 
 ## Install
 
