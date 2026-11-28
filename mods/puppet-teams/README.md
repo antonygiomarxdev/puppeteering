@@ -32,9 +32,11 @@ The hook only guards the agents' own calls. To make sure nothing reaches `main` 
 **Then add the rule**, either way:
 
 - *Ruleset:* **Settings**, **Rules**, **Rulesets**, **New branch ruleset**. Target `main`, turn on **Require a pull request before merging** with **Required approvals** set to 1, and leave the **Bypass list** empty.
-- *Classic:* **Settings**, **Branches**, **Add branch protection rule** for `main`. Turn on **Require a pull request before merging** and **Require approvals** (1), and turn on **Do not allow bypassing the above settings**, so admins are held too.
+- *Classic:* **Settings**, **Branches**, **Add classic branch protection rule** for `main`. Turn on **Require a pull request before merging** and **Require approvals** (1), and turn on **Do not allow bypassing the above settings**, so admins are held too.
 
-With that rule, and the agents on their own identity, nothing lands on `main` without your approval. Under `auto`, require status checks (**Require status checks to pass**) instead of approvals, so the agents can merge once the checks pass.
+With that rule, and the agents on their own identity, nothing lands on `main` without your approval. Under `auto`, require status checks (**Require status checks to pass before merging**, with at least one check selected) instead of approvals, so the agents can merge once the checks pass.
+
+On a private repository, rulesets and branch protection need a paid GitHub plan (Pro, Team or Enterprise).
 
 ## Install
 
