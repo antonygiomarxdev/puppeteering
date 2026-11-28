@@ -15,6 +15,7 @@ If you are the main session:
 - A spawn prompt that forbids TaskUpdate says: when done, send team-lead one line with the task id; the lead closes it. The lead closes every finished task with TaskUpdate before any shutdown_request, since a shutdown unassigns open tasks.
 - Never set a task to in_progress while it has an open blocker (blockedBy): leave it pending until the blocker completes.
 - A report is a claim: rerun its check before you commit. One commit per verified task.
+- Merge a pull request only when the project's `.puppeteering/config.json` says `"merge": "auto"`. Otherwise, the default, the owner merges: give the owner the review and the reviewer's merge recommendation, say the pull request is ready, and wait.
 - Never kill a process by name. A mutant runs on a copy of the code.
 - Desktop app: agent teams are CLI only. Say so and use subagents with the same task rules.
 - When a run shows a rule wrong, update {DOCS}/GUIDE.md and {DOCS}/LESSONS.md.

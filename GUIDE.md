@@ -47,7 +47,7 @@ On those newer models, with only the first, a team exists and has no task list: 
 
 | Role | Model | Does |
 | --- | --- | --- |
-| Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a merged pull request |
+| Lead | Opus | Coordinates one goal: talks to the owner, splits the goal, creates tasks, verifies, commits, pushes, and takes it to a reviewed pull request; merges it only when the project's merge setting is auto |
 | Tester | Sonnet | Runs before the builder. Input is the spec path; it works with no implementation: the spec, the public interface (signatures, types) and the test config only (D-31). Writes tests that name the row they cover and fail for the right reason; the builder may not edit them |
 | Builder | Sonnet (Haiku for a mechanical one-file task) | Writes code in the files its task names |
 | Reviewer | Sonnet | Independent review of a pushed head, by area (backend, frontend, hooks, docs, security). Never the author. Gates first, every FAIL cites a row or gate, at most 3 rounds, a binary verdict, check output pasted |
@@ -62,7 +62,7 @@ Define roles once as [subagent definitions](https://code.claude.com/docs/en/sub-
 
 ## One coordinator per goal
 
-*This guide's practice, not the docs':* give one goal to one lead, in its own worktree, and let it finish the goal. The lead splits the goal, coordinates its team and takes it to a merged pull request. It does not stop at a plan.
+*This guide's practice, not the docs':* give one goal to one lead, in its own worktree, and let it finish the goal. The lead splits the goal, coordinates its team and takes it to a reviewed pull request with the reviewer's merge recommendation. It does not stop at a plan. Who merges is the project's merge setting, `.puppeteering/config.json`: `owner`, the default, where the lead says the pull request is ready and waits, or `auto`, where the lead merges once the gates and the review pass (REQ-18). A puppet-teams hook enforces it.
 
 Avoiding conflicts is the coordinator's job, not the workers'. As a lead, it delegates so no two teammates touch the same file. Among leads, it keeps goals apart so no two coordinators touch the same file. A collision means the split was wrong, so fix the split, not the worker.
 

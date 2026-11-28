@@ -1,0 +1,68 @@
+#!/usr/bin/env node
+// puppet-teams: PreToolUse hook (REQ-18, docs/merge/specs/SPEC-01-1-merge-gate-hook.md).
+// Under the project's merge setting "owner" (the default), the calls that merge are denied: the owner merges.
+// Under "auto" they are allowed. Every other call, and input it cannot parse, is allowed.
+const fs = require('fs');
+const path = require('path');
+
+const REASON = "This project's merge setting is owner (.puppeteering/config.json): the owner merges. "
+  + 'Give the owner the review and a merge recommendation (Merge: recommend or Merge: do not merge), and wait.';
+
+// 'auto' only when .puppeteering/config.json says so; anything else, a missing or unreadable file included, is 'owner'.
+function mergeSetting(root) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(String(root || '.'), '.puppeteering', 'config.json'), 'utf8').replace(/^﻿/, ''));
+    return cfg && cfg.merge === 'auto' ? 'auto' : 'owner';
+  } catch (e) {
+    return 'owner';
+  }
+}
+
+const MERGE_TOOL = /(merge_pull_request|enable_pr_auto_merge)$/;
+const PROTECTED = /^(?:\+?(?:refs\/heads\/)?(main|master)|.*:(?:refs\/heads\/)?(main|master))$/;
+
+// A git push whose refspecs after the remote name main or master as the target.
+function pushesToMain(command) {
+  for (const part of command.split(/&&|\|\||;|\|/)) {
+    const words = part.trim().split(/\s+/);
+    const i = words.findIndex((w, k) => w === 'push' && words[k - 1] === 'git');
+    if (i < 0) continue;
+    const args = words.slice(i + 1).filter((w) => !w.startsWith('-'));
+    if (args.slice(1).some((ref) => PROTECTED.test(ref.replace(/^['"]|['"]$/g, '')))) return true;
+  }
+  return false;
+}
+
+// null to allow, { reason } to deny.
+function decide(input, setting) {
+  if (setting === 'auto' || !input || typeof input !== 'object') return null;
+  const tool = String(input.tool_name || '');
+  if (MERGE_TOOL.test(tool)) return { reason: REASON };
+  if (tool !== 'Bash') return null;
+  const command = String((input.tool_input && input.tool_input.command) || '');
+  if (/\bgh\s+pr\s+merge\b/.test(command) || pushesToMain(command)) return { reason: REASON };
+  return null;
+}
+
+// Read the PreToolUse JSON from stdin and print a deny, or nothing. hooks.json calls run(); a direct `node merge-gate.js` does too.
+function run() {
+  setTimeout(() => process.exit(0), 1000).unref();
+  let raw = '';
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (c) => { raw += c; });
+  process.stdin.on('error', () => process.exit(0));
+  process.stdin.on('end', () => {
+    try {
+      const input = JSON.parse(raw.replace(/^\uFEFF/, ''));
+      const d = decide(input, mergeSetting(input.cwd || process.cwd()));
+      if (d) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: d.reason } }));
+    } catch (e) {
+      // Not parseable: not a call this hook judges.
+    }
+    process.exit(0);
+  });
+}
+
+module.exports = { mergeSetting, decide, run };
+
+if (require.main === module) run();

@@ -27,6 +27,8 @@ If you must explore before you can split the work, that exploration is the first
 
 Order them with addBlockedBy. No two running tasks share a file.
 
+The last task of every pile is "Reflect.": owned by the reflector, blocked by the goal's last task, run once the goal's pull request is merged or closed (skill reflect). It writes at most one observed lesson, or none.
+
 ## 3. Standing team
 
 - Spawn one teammate per role, not one per task.

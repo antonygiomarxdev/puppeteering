@@ -122,3 +122,23 @@ test('covers: merge/REQ-18/MG-5 the README documents the merge setting, its valu
   const low = text.toLowerCase();
   for (const s of ['.puppeteering/config.json', 'owner', 'auto', 'gh pr merge']) assert.ok(low.includes(s), 'README holds "' + s + '"');
 });
+
+// Added by the builder after the tests were committed: the hook must work when launched the way hooks.json launches it
+// (node -e "require(...)"), where require.main is not the hook. The tester's tests ran the file directly and could not see it.
+test('covers: merge/REQ-18/MG-2 the hooks.json PreToolUse command denies gh pr merge under owner', () => {
+  const hooks = JSON.parse(fs.readFileSync(path.join(__dirname, 'hooks.json'), 'utf8'));
+  const entry = hooks.hooks.PreToolUse[0];
+  assert.ok(new RegExp(entry.matcher).test('Bash'), 'matcher covers Bash');
+  assert.ok(new RegExp('^(?:' + entry.matcher + ')$').test('mcp__github__merge_pull_request'), 'matcher covers MCP tools');
+  const cmd = entry.hooks[0].command;
+  const code = cmd.slice(cmd.indexOf('"') + 1, cmd.lastIndexOf('"')).replace(/\\"/g, '"');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pt-merge-json-'));
+  try {
+    const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'gh pr merge 3' }, cwd: dir });
+    const r = spawnSync(process.execPath, ['-e', code], { input, encoding: 'utf8', env: { ...process.env, CLAUDE_PLUGIN_ROOT: path.join(__dirname, '..') } });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.strictEqual(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision, 'deny');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
