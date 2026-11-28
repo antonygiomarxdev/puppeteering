@@ -21,16 +21,77 @@ function mergeSetting(root) {
 const MERGE_TOOL = /(merge_pull_request|enable_pr_auto_merge)$/;
 const PROTECTED = /^(?:\+?(?:refs\/heads\/)?(main|master)|.*:(?:refs\/heads\/)?(main|master))$/;
 
-// Shell text to plain words: comments dropped, then every separator, subshell, quote and redirection made a break,
-// so `bash -c "git push origin main"`, `(git push origin main)` and `git push origin main>/dev/null` read as plain commands.
-function segments(command) {
-  return command
-    .split('\n')
-    .map((line) => line.replace(/(^|\s)#.*$/, '$1'))
-    .join('\n')
-    .replace(/\d*[<>]+&?\d*\S*/g, ' ')
-    .split(/[\n;&|()`]|\$\(/)
-    .map((seg) => seg.replace(/["']/g, ' ').trim().split(/\s+/).filter(Boolean));
+// Shell text to commands of plain words, the way the shell splits them: quotes and backslashes join a word
+// (`ma"in"` is main, `-C "my dir"` one value), a # starts a comment only at the start of a word outside quotes,
+// and ; & | ( ) ` $( and newlines end a command outside quotes. A redirection's target is dropped.
+// Text a shell runs (bash -c "...", eval ...) is read again as commands; other quoted text, a commit message, is not.
+const SHELLS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh']);
+// The text a command hands to a shell: the argument after -c of a shell, or what follows eval.
+function shellText(words) {
+  const found = [];
+  for (let i = 0; i < words.length; i++) {
+    const name = words[i].split('/').pop();
+    if (name === 'eval') { found.push(words.slice(i + 1).join(' ')); break; }
+    if (SHELLS.has(name)) {
+      const c = words.findIndex((w, k) => k > i && /^-[a-z]*c[a-z]*$/.test(w));
+      if (c > 0 && words[c + 1] !== undefined) found.push(words[c + 1]);
+      break;
+    }
+  }
+  return found;
+}
+
+function segments(command, depth = 0) {
+  const out = [];
+  let words = [];
+  let word = '';
+  let quoted = false; // the current word holds a quoted part
+  let redirect = false; // the next word is a redirection target
+  const endWord = () => {
+    if (word !== '' || quoted) {
+      if (redirect) redirect = false;
+      else {
+        words.push(word);
+      }
+    }
+    word = '';
+    quoted = false;
+  };
+  const endCommand = () => {
+    endWord();
+    if (words.length) {
+      out.push(words);
+      if (depth < 3) for (const inner of shellText(words)) out.push(...segments(inner, depth + 1));
+    }
+    words = [];
+  };
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i];
+    if (c === '\\') { if (i + 1 < command.length && command[i + 1] !== '\n') word += command[++i]; else i++; continue; }
+    if (c === "'") { const j = command.indexOf("'", i + 1); word += command.slice(i + 1, j < 0 ? undefined : j); quoted = true; i = j < 0 ? command.length : j; continue; }
+    if (c === '"') {
+      let j = i + 1;
+      for (; j < command.length && command[j] !== '"'; j++) {
+        if (command[j] === '\\' && j + 1 < command.length && '"\\$`'.includes(command[j + 1])) j++;
+        word += command[j];
+      }
+      quoted = true; i = j; continue;
+    }
+    if (c === '#' && word === '' && !quoted) { const j = command.indexOf('\n', i); i = j < 0 ? command.length : j - 1; continue; }
+    if (c === '>' || c === '<') {
+      if (/^\d*$/.test(word) && !quoted) word = '';
+      endWord();
+      while (command[i + 1] === '>' || command[i + 1] === '&') i++;
+      if (/\d/.test(command[i + 1] || '') && command[i] === '&') { while (/\d/.test(command[i + 1] || '')) i++; continue; }
+      redirect = true; continue;
+    }
+    if (c === '$' && command[i + 1] === '(') { endCommand(); i++; continue; }
+    if (';&|()`\n'.includes(c)) { endCommand(); continue; }
+    if (/\s/.test(c)) { endWord(); continue; }
+    word += c;
+  }
+  endCommand();
+  return out;
 }
 
 // git's own options before the subcommand; these take a value.

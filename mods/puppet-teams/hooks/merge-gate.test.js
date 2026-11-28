@@ -170,3 +170,37 @@ test('covers: merge/REQ-18/MG-2 under owner, a later line or a comment naming ma
   for (const c of ['git push origin feature\necho main', 'git push origin feature # main', 'git push origin main-fix', 'git log main'])
     assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + JSON.stringify(c));
 });
+
+// Added by the builder after review round 2 (FAIL on MG-2): a quoted # dropped the rest of the line, and a quoted
+// option value with a space split in two. The gate now splits shell text the way the shell does.
+test('covers: merge/REQ-18/MG-2 under owner, quoted text does not hide a push to main', () => {
+  const { decide } = gate();
+  const bash = (command) => ({ tool_name: 'Bash', tool_input: { command } });
+  for (const c of [
+    'git commit -m "fix #12" && git push origin main',
+    "git commit -m 'close #4'; git push origin main",
+    'git -C "my dir" push origin main',
+    "git -C 'a b' push origin main",
+    'bash -c "git push origin \\"main\\""',
+    'git push origin ma"in"',
+    "git push origin ma''in",
+    'git push origin m\\ain',
+  ]) assert.ok(decide(bash(c), 'owner'), 'denied: ' + c);
+  for (const c of ['git commit -m "git push origin main"', 'echo "# git push origin main"', 'git push origin feature 2>&1 # main'])
+    assert.strictEqual(decide(bash(c), 'owner'), null, 'allowed: ' + c);
+});
+
+test('covers: merge/REQ-18/MG-1 the hook reads the setting from CLAUDE_PROJECT_DIR before the call\'s folder', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pt-merge-root-'));
+  try {
+    fs.mkdirSync(path.join(root, '.puppeteering'));
+    fs.writeFileSync(path.join(root, '.puppeteering', 'config.json'), '{"merge": "auto"}');
+    fs.mkdirSync(path.join(root, 'sub'));
+    const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'gh pr merge 1' }, cwd: path.join(root, 'sub') });
+    const r = spawnSync(process.execPath, [path.join(__dirname, 'merge-gate.js')], { input, encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout, '', 'auto from the project root');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
